@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>化學人鍊金術工仿 v6.0.5</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Noto Sans TC', sans-serif; }
+  .card { transition: transform .15s, box-shadow .15s; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 6px 12px rgba(0,0,0,.15); }
+  .sel { box-shadow: 0 0 0 3px #f87171 inset !important; }
+</style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-rose-100 via-indigo-100 to-sky-100 p-4">
+  <div class="mx-auto max-w-7xl">
+    <!-- 首圖橫幅 -->
+    <header class="mb-2 flex items-center gap-3">
+      <img class="w-8 h-8 text-indigo-500" src="https://scientieic-american-media.s3.ap-northeast-1.amazonaws.com/posts/2025/04/fed370e3-048c-414d-9a56-8cc7ee8cb089.jpeg" />
+      <h1 class="text-2xl font-bold text-slate-700">化學人鍊金術工仿 v6.0.5</h1>
+    </header>
+    <p class="text-sm text-slate-600 mb-4">勝利條件：先完成 <strong>7 個分子</strong> 即獲勝</p>
+
+    <div id="info" class="mb-3 font-medium text-slate-700"></div>
+
+    <div class="flex gap-2 mb-2">
+      <button id="formBtn" class="px-4 py-2 rounded bg-emerald-500 text-white" disabled>合成</button>
+      <button id="discardBtn" class="px-4 py-2 rounded bg-rose-500 text-white" disabled>丟棄</button>
+      <button id="endBtn" class="px-4 py-2 rounded bg-indigo-500 text-white" disabled>結束回合（抽牌）</button>
+    </div>
+    <!-- reset button 分行顯示，避免誤點 -->
+    <div class="mb-6">
+      <button id="resetBtn" class="px-4 py-2 rounded bg-slate-500 text-white">重新開始</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div>
+        <h2 class="font-semibold text-slate-800">金屬手牌</h2>
+        <div id="metalHand" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div>
+        <h2 class="font-semibold text-slate-800">非金屬手牌</h2>
+        <div id="nonHand" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+    <h3 class="text-sm text-slate-600 mb-2">可完成分子</h3>
+    <ul id="hints" class="list-disc list-inside text-xs text-emerald-700 mb-6"></ul>
+    <h2 class="font-semibold text-slate-800">你的分子</h2>
+    <div id="playerMelds" class="flex flex-wrap gap-2 mb-6"></div>
+    <h2 class="font-semibold text-slate-800">惰性氣體區</h2>
+    <div id="inertZone" class="flex flex-wrap gap-2 mb-6"></div>
+        <h2 class="font-semibold text-slate-800">對手手牌 (<span id="aiCnt">0</span>)</h2>
+    <div id="aiHand" class="flex flex-wrap gap-2 mb-4"></div>
+
+    <h2 class="font-semibold text-slate-800">電腦分子 (<span id="aiCnt">0</span>)</h2>
+    <div id="aiMelds" class="flex flex-wrap gap-2"></div>
+  </div>
+  <script>
+    /* ========= 遊戲常量 ========= */
+    const BASE = 4, START = 7, DRAW = 2, WIN = 7;
+    const WEIGHTS = { H:6, O:4, C:4, N:2, He:1, Ne:1, Ar:1 };
+    const METALS = new Set(['Li','Na','Be','Mg','Al']);
+
+    /* ========= 元素定義 ========= */
+    const ELEMENTS = [
+      {s:'H',n:'氫',v:1},{s:'Li',n:'鋰',v:1},{s:'Be',n:'鈹',v:2},{s:'B',n:'硼',v:3},
+      {s:'C',n:'碳',v:-4},{s:'N',n:'氮',v:-3},{s:'O',n:'氧',v:-2},{s:'F',n:'氟',v:-1},
+      {s:'Ne',n:'氖',v:0},{s:'Na',n:'鈉',v:1},{s:'Mg',n:'鎂',v:2},{s:'Al',n:'鋁',v:3},
+      {s:'Si',n:'矽',v:4},{s:'P',n:'磷',v:-3},{s:'S',n:'硫',v:-2},{s:'Cl',n:'氯',v:-1},
+      {s:'Ar',n:'氬',v:0}
+    ].map(e=>({...e,isMetal:METALS.has(e.s)}));
+
+    /* ========= 分子定義 (RAW 片段示例) ========= */
+    const GROUPS = { OH:{O:1,H:1} };
+    const RAW = [
+      {n:'水',f:{H:2,O:1}},
+      {n:'氯化鈉',f:{Na:1,Cl:1}},
+      {n:'氧氣',f:{O:2}},
+      {n:'氫氣',f:{H:2}},
+      {n:'氮氣',f:{N:2}},
+      {n:'氯氣',f:{Cl:2}},
+      {n:'乙酸',f:{C:2,H:4,O:2}},
+      {n:'氫化鋰',f:{Li:1,H:1}},
+      {n:'氫化鈉',f:{Na:1,H:1}},
+      {n:'氫化鈹',f:{Be:1,H:2}},
+      {n:'氫化鎂',f:{Mg:1,H:2}},
+      {n:'氫化鋁',f:{Al:1,H:3}},
+      {n:'甲烷',f:{C:1,H:4}},
+      {n:'氨',f:{N:1,H:3}},
+      {n:'磷化氫',f:{P:1,H:3}},
+      {n:'硫化氫',f:{H:2,S:1}},
+      {n:'氟化氫',f:{H:1,F:1}},
+      {n:'氯化氫',f:{H:1,Cl:1}},
+      {n:'氟氫化氬',f:{H:1,Ar:1,F:1}},
+      {n:'氟化鋰',f:{Li:1,F:1}},
+      {n:'氯化鋰',f:{Li:1,Cl:1}},
+      {n:'氟化鈉',f:{Na:1,F:1}},
+      {n:'氯化鈉',f:{Na:1,Cl:1}},
+      {n:'氟化鈹',f:{Be:1,F:2}},
+      {n:'氯化鈹',f:{Be:1,Cl:2}},
+      {n:'氟化鎂',f:{Mg:1,F:2}},
+      {n:'氯化鎂',f:{Mg:1,Cl:2}},
+      {n:'氟化鋁',f:{Al:1,F:3}},
+      {n:'氯化鋁',f:{Al:1,Cl:3}},
+      {n:'四氟化矽',f:{Si:1,F:4}},
+      {n:'四氯化矽',f:{Si:1,Cl:4}},
+      {n:'三氯化磷',f:{P:1,Cl:3}},
+      {n:'五氯化磷',f:{P:1,Cl:5}},
+      {n:'三氟化磷',f:{P:1,F:3}},
+      {n:'五氟化磷',f:{P:1,F:5}},
+      {n:'三氟化硼',f:{B:1,F:3}},
+      {n:'三氯化硼',f:{B:1,Cl:3}},
+      {n:'三氟化氮',f:{N:1,F:3}},
+      {n:'三氟化氯',f:{Cl:1,F:3}},
+      {n:'五氟化氯',f:{Cl:1,F:5}},
+      {n:'氧化鋰',f:{Li:2,O:1}},
+      {n:'氧化鈉',f:{Na:2,O:1}},
+      {n:'氧化鈹',f:{Be:1,O:1}},
+      {n:'氧化鎂',f:{Mg:1,O:1}},
+      {n:'氧化鋁',f:{Al:2,O:3}},
+      {n:'三氧化二硼',f:{B:2,O:3}},
+      {n:'一氧化碳',f:{C:1,O:1}},
+      {n:'二氧化碳',f:{C:1,O:2}},
+      {n:'一氧化二氮',f:{N:2,O:1}},
+      {n:'一氧化氮',f:{N:1,O:1}},
+      {n:'二氧化氮',f:{N:1,O:2}},
+      {n:'三氧化二氮',f:{N:2,O:3}},
+      {n:'四氧化二氮',f:{N:2,O:4}},
+      {n:'五氧化二氮',f:{N:2,O:5}},
+      {n:'二氧化矽',f:{Si:1,O:2}},
+      {n:'三氧化二磷',f:{P:2,O:3}},
+      {n:'五氧化二磷',f:{P:2,O:5}},
+      {n:'二氧化硫',f:{S:1,O:2}},
+      {n:'三氧化硫',f:{S:1,O:3}},
+      {n:'一氧化二氯',f:{Cl:2,O:1}},
+      {n:'二氧化氯',f:{Cl:1,O:2}},
+      {n:'硫化鋰',f:{Li:2,S:1}},
+      {n:'硫化鈉',f:{Na:2,S:1}},
+      {n:'硫化鈹',f:{Be:1,S:1}},
+      {n:'硫化鎂',f:{Mg:1,S:1}},
+      {n:'硫化鋁',f:{Al:2,S:3}},
+      {n:'碳化矽',f:{Si:1,C:1}},
+      {n:'二硫化矽',f:{Si:1,S:2}},
+      {n:'碳化鋁',f:{Al:4,C:3}},
+      {n:'碳化硼',f:{B:4,C:1}},
+      {n:'氮化硼',f:{B:1,N:1}},
+      {n:'氮化鋁',f:{Al:1,N:1}},
+      {n:'氮化鋰',f:{Li:3,N:1}},
+      {n:'氮化鎂',f:{Mg:3,N:2}},
+      {n:'乙烯',f:{C:2,H:4}},
+      {n:'乙炔',f:{C:2,H:2}},
+      {n:'甲醇',f:{C:1,H:4,O:1}},
+      {n:'甲醛',f:{C:1,H:2,O:1}},
+      {n:'乙醛',f:{C:2,H:4,O:1}},
+      {n:'甲酸',f:{C:1,H:2,O:2}},
+      {n:'乙腈',f:{C:2,H:3,N:1}},
+      {n:'甲胺',f:{C:1,H:5,N:1}},
+      {n:'氯仿',f:{C:1,H:1,Cl:3}},
+      {n:'二氯甲烷',f:{C:1,H:2,Cl:2}},
+      {n:'氯甲烷',f:{C:1,H:3,Cl:1}},
+      {n:'光氣',f:{C:1,O:1,Cl:2}},
+      {n:'硫酸',f:{H:2,S:1,O:4}},
+      {n:'亞硫酸',f:{H:2,S:1,O:3}},
+      {n:'碳酸',f:{H:2,C:1,O:3}},
+      {n:'硝酸',f:{H:1,N:1,O:3}},
+      {n:'亞硝酸',f:{H:1,N:1,O:2}},
+      {n:'亞磷酸',f:{H:3,P:1,O:3}},
+      {n:'次磷酸',f:{H:3,P:1,O:2}},
+      {n:'高氯酸',f:{H:1,Cl:1,O:4}},
+      {n:'氯酸',f:{H:1,Cl:1,O:3}},
+      {n:'亞氯酸',f:{H:1,Cl:1,O:2}},
+      {n:'次氯酸',f:{H:1,Cl:1,O:1}},
+      {n:'氫氰酸',f:{H:1,C:1,N:1}},
+      {n:'異氰酸',f:{H:1,N:1,C:1,O:1}},
+      {n:'硫氰酸',f:{H:1,S:1,C:1,N:1}},
+      {n:'疊氮酸',f:{H:1,N:3}},
+      {n:'硫代硫酸',f:{H:2,S:2,O:3}},
+      {n:'氫氧化鋰',f:{Li:1,O:1,H:1}},
+      {n:'氫氧化鈉',f:{Na:1,O:1,H:1}},
+      {n:'氫氧化鎂',f:{Mg:1,O:2,H:2}},
+      {n:'氫氧化鋁',f:{Al:1,O:3,H:3}},
+      {n:'氫氧化銨',f:{N:1,H:5,O:1}},
+      {n:'氯化銨',f:{N:1,H:4,Cl:1}},
+      {n:'氟化銨',f:{N:1,H:4,F:1}},
+      {n:'碳酸鋰',f:{Li:2,C:1,O:3}},
+      {n:'碳酸鈉',f:{Na:2,C:1,O:3}},
+      {n:'碳酸氫鈉',f:{Na:1,H:1,C:1,O:3}}
+    ];
+
+    /* ========= 工具函式 ========= */
+    const expand = f => { const r={}; for(const k in f){ if(k==='isIon')continue; if(GROUPS[k])for(const e in GROUPS[k])r[e]=(r[e]||0)+GROUPS[k][e]*f[k]; else r[k]=(r[k]||0)+f[k]; } return r; };
+    const M = RAW.map(x=>({name:x.n,isIon:x.f.isIon||false,formula:expand(x.f)}));
+    const key = cnt=>Object.keys(cnt).sort().map(k=>k+cnt[k]).join('');
+    const MAP = new Map(M.map(m=>[key(m.formula),m]));
+
+    /* ========= 牌堆建立 ========= */
+    const deck=[]; for(const el of ELEMENTS){ const c=Math.max(1,Math.round(BASE*(WEIGHTS[el.s]||1))); for(let i=0;i<c;i++)deck.push({...el,id:crypto.randomUUID()}); }
+    for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+
+    /* ========= 遊戲狀態 ========= */
+    let round=1,turn='human';
+    const mh=[],nh=[],ai=[],pm=[],am=[],inert=[],sel=new Set();
+
+    /* ========= DOM 快捷 ========= */
+    const $=id=>document.getElementById(id);
+    const aiHand = $('aiHand'); // 對手手牌容器
+
+    const metalEl=$('metalHand'),nonEl=$('nonHand'),hints=$('hints'),infoEl=$('info'),aiCnt=$('aiCnt');
+    const pMeld=$('playerMelds'),aMeld=$('aiMelds');
+    const btnF=$('formBtn'),btnD=$('discardBtn'),btnE=$('endBtn'),btnR=$('resetBtn');
+
+    /* ========= 抽牌 ========= */
+    const drawPlayer=()=>{const c=deck.pop();if(c)(c.isMetal?mh:nh).push(c);};
+    for(let i=0;i<START;i++){drawPlayer();ai.push(deck.pop());}
+
+    /* ========= 工具 ========= */
+    const cntArr=a=>a.reduce((o,c)=>(o[c.s]=(o[c.s]||0)+1,o),{});
+    const cardElem=c=>{const d=document.createElement('div');d.className='card w-20 h-28 border flex flex-col items-center justify-center text-xs';if(sel.has(c.id))d.classList.add('sel');d.innerHTML=`<span class='text-lg font-bold'>${c.s}</span><span>${c.n}</span><span>${c.v>0?'+':''}${c.v}</span>`;d.onclick=()=>{if(turn!=='human')return;sel.has(c.id)?sel.delete(c.id):sel.add(c.id);render();};return d;};
+    const molElem=n=>{const d=document.createElement('div');d.className='card w-20 h-16 bg-emerald-100 border border-emerald-400 flex items-center justify-center text-xs font-medium';d.textContent=n;return d;};
+
+    /* ========= 主渲染 ========= */
+    function render(){
+      infoEl.textContent=`回合 ${round} | 牌堆 ${deck.length}`;
+      aiCnt.textContent=ai.length;
+      // 我方手牌
+      metalEl.innerHTML=nonEl.innerHTML='';
+      mh.forEach(c=>metalEl.appendChild(cardElem(c)));
+      nh.forEach(c=>nonEl.appendChild(cardElem(c)));
+      // 顯示對手手牌（正面）
+      aiHand.innerHTML='';
+      ai.forEach(c=>aiHand.appendChild(cardElem(c)));
+      // 我方與AI已成分子
+      pMeld.innerHTML=''; pm.forEach(m=>pMeld.appendChild(molElem(m.name)));
+      aMeld.innerHTML=''; am.forEach(m=>aMeld.appendChild(molElem(m.name)));
+      // 提示
+      hints.innerHTML=''; const my=cntArr([...mh,...nh]);
+      for(const m of M){
+        if(Object.keys(m.formula).every(e=>my[e]>=m.formula[e])){
+          const li=document.createElement('li'); li.textContent=m.name; hints.appendChild(li);
+          if(hints.childElementCount>=3) break;
+        }
+      }
+      btnF.disabled=btnD.disabled=sel.size===0||turn!=='human';btnE.disabled=turn!=='human';}
+
+    /* ========= 玩家操作 ========= */
+    function discard(){sel.forEach(id=>{const pool=mh.find(c=>c.id===id)?mh:nh;const idx=pool.findIndex(c=>c.id===id);const card=pool.splice(idx,1)[0];if(['He','Ne','Ar'].includes(card.s))inert.push(card);});sel.clear();render();}
+    function form(){const chosen=[...mh,...nh].filter(c=>sel.has(c.id));const mk=key(cntArr(chosen));const mol=MAP.get(mk);sel.clear();if(!mol){render();return;}chosen.forEach(c=>{const pool=mh.includes(c)?mh:nh;pool.splice(pool.indexOf(c),1);});mol.isIon?nh.push({s:mol.name,n:mol.name,v:-1,isMetal:false,id:crypto.randomUUID()}):pm.push(mol);render();if(pm.length>=WIN){alert('🎉 你贏了!');location.reload();}}
+
+    /* ========= AI ========= */
+    function aiTurn(){for(let i=0;i<DRAW;i++)ai.push(deck.pop());let progress=true;while(progress){progress=false;const aCnt=cntArr(ai);for(const m of M){if(m.isIon)continue;if(Object.keys(m.formula).every(e=>aCnt[e]>=m.formula[e])){for(const e in m.formula){let n=m.formula[e];for(let i=ai.length-1;i>=0&&n>0;i--)if(ai[i].s===e){ai.splice(i,1);n--;}}am.push(m);progress=true;break;}}if(am.length>=WIN){alert('😵 AI 贏了');location.reload();return;}}turn='human';round++;drawPlayer();drawPlayer();render();}
+
+    /* ========= 事件 ========= */
+    btnF.onclick=form;btnD.onclick=discard;btnE.onclick=()=>{turn='ai';render();setTimeout(aiTurn,200);};btnR.onclick=()=>location.reload();
+
+    render();
+  </script>
+</body>
+</html>
