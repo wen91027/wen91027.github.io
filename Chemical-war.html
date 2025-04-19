@@ -58,6 +58,7 @@ const MOLECULES=[
   { name: "鹽酸", formula: { H: 1, Cl: 1 }, effect: "corrosion" },
   { name: "硫酸", formula: { H: 2, S: 1, O: 4 }, effect: "corrosion" },
   { name: "硝酸", formula: { H: 1, N: 1, O: 3 }, effect: "corrosion" },
+    { name: "氰酸", formula: { H: 1, N: 1, O: 1,H:1 }, effect: "poison" },
   { name: "氫氧化鈉", formula: { Na: 1, O: 1, H: 1 }, effect: "corrosion" },
   { name: "光氣", formula: { C: 1, O: 1, Cl: 2 }, effect: "poison" },
   { name: "氯仿", formula: { C: 1, H: 1, Cl: 3 }, effect: "poison" },
@@ -200,3 +201,4 @@ function App(){
 ReactDOM.render(<App/>,document.getElementById('root'));</script>
 </body>
 </html>
+
