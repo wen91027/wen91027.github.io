@@ -42,6 +42,7 @@ ELEMENTS.forEach(e=>{const w=WEIGHTS[e]||1;const cnt=Math.round(w*2);for(let i=0
 function drawCard(){return{el:drawPool[Math.floor(Math.random()*drawPool.length)],corroded:false};}
 const MOLECULES=[
  { name: "水", formula: { H: 2, O: 1 }, effect: "none" },
+   { name: "氯化鈉", formula: { Na: 1, Cl: 1 }, effect: "none" },
   { name: "鹽酸", formula: { H: 1, Cl: 1 }, effect: "corrosion" },
   { name: "硫酸", formula: { H: 2, S: 1, O: 4 }, effect: "corrosion" },
   { name: "硝酸", formula: { H: 1, N: 1, O: 3 }, effect: "corrosion" },
@@ -123,8 +124,8 @@ function findMolecule(sel){const cnt={}; sel.forEach(c=>{ if(c && c.el) cnt[c.el
 function App(){
   const [turn,setTurn]=React.useState('player');
   const firstTurn=React.useRef(true);
-  const [pHP,setP]=React.useState(500);
-  const [aHP,setA]=React.useState(500);
+  const [pHP,setP]=React.useState(200);
+  const [aHP,setA]=React.useState(200);
   const [pHand,setPH]=React.useState([]);
   const [aHand,setAH]=React.useState([]);
   const [pField,setPF]=React.useState([]);
@@ -231,7 +232,7 @@ function App(){
         <h1>化學卡牌對戰</h1>
         <div className="hp-section">
           <span className="hp-label">AI HP</span>
-          <div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/500*100}%`}}/></div>
+          <div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/200*100}%`}}/></div>
           <span>{aHP}</span>
         </div>
         <div className="zone">
@@ -255,7 +256,7 @@ function App(){
         <div className="prompt">{possible.length>0?`可合成: ${possible.join('、')}`:''}</div>
         <div className="hp-section">
           <span className="hp-label">玩家 HP</span>
-          <div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/500*100}%`}}/></div>
+          <div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/200*100}%`}}/></div>
           <span>{pHP}</span>
         </div>
         <div className="controls">
