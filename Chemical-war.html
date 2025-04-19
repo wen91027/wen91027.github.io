@@ -37,7 +37,7 @@
 <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 <script type="text/babel">
-const MAX_HP = 500;
+const MAX_HP = 128;
 const ELEMENTS=["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"];
 const WEIGHTS={H:6,C:4,O:4,N:3,Na:3,He:0.5,Ne:0.5,Ar:0.5};
 const drawPool=[];
@@ -155,7 +155,11 @@ function App(){
       <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((m,i)=><div key={i} className={`card molecule ${m.effect}`}><div>{m.name}</div></div>)}</div></div>
       <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((m,i)=><div key={i} className={`card molecule ${m.effect}`}><div>{m.name}</div></div>)}</div></div>
       <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=><div key={i} className={`card element${sel.includes(i)?' selected':''}`} onClick={()=>onSelect(i)}><div className="symbol">{c.el}</div><div className="number">{ELEMENTS.indexOf(c.el)+1}</div></div>)}</div></div>
-      <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:''}</div>
+      <div className="prompt">
+          {possibleList.length > 0
+            ? `可合成: ${possibleList.join('、')}`
+            : '無可合成化合物'}
+        </div>
       <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
       <div className="controls"><button onClick={combine} disabled={turn!=='player'||gameOver}>合成</button><button onClick={discard} disabled={turn!=='player'||sel.length===0||gameOver}>棄牌</button><button onClick={endTurn} disabled={turn!=='player'||gameOver}>結束回合</button></div>
       <div className="log">{log.map((l,i)=><div key={i}>{l}</div>)}</div>
