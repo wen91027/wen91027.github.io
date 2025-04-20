@@ -49,7 +49,7 @@
   <script type="text/babel">
     const MAX_HP = 128;
     const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"];
-    const WEIGHTS = {H:6,C:4,O:4,N:3,Na:3,He:0.5,Ne:0.5,Ar:0.5};
+    const WEIGHTS = { H:6, C:4, O:4, N:3, Na:3, He:0.5, Ne:0.5, Ar:0.5 };
     const drawPool = [];
     ELEMENTS.forEach(e => {
       const w = WEIGHTS[e] || 1;
@@ -179,190 +179,100 @@
       React.useEffect(() => {
         if (gameOver) return;
         if (firstDraw.current) { firstDraw.current = false; return; }
-        if (turn === 'player') {
-          setPH(h => [...h, drawCard(), drawCard()]);
-          addLog('玩家抽2張');
-        } else {
-          setAH(h => [...h, drawCard(), drawCard()]);
-          addLog('AI抽2張');
-        }
+        if (turn === 'player') { setPH(h => [...h, drawCard(), drawCard()]); addLog('玩家抽2張'); }
+        else { setAH(h => [...h, drawCard(), drawCard()]); addLog('AI抽2張'); }
       }, [turn, gameOver]);
-      React.useEffect(() => {
-        if (pHP <= 0) setGameOver('lose');
-        else if (aHP <= 0) setGameOver('win');
-      }, [pHP, aHP]);
+      React.useEffect(() => { if (pHP <= 0) setGameOver('lose'); else if (aHP <= 0) setGameOver('win'); }, [pHP, aHP]);
       function applyDamage(target, dmg) {
-        const fieldArr = (target === 'player' ? pField : aField) || [];
-        const setField = target === 'player' ? setPF : setAF;
-        const setHp = target === 'player' ? setP : setA;
-        const idx = fieldArr.findIndex(c => c.usable);
-        if (idx >= 0) {
+        const fieldArr = target==='player'?pField:aField;
+        const setField = target==='player'?setPF:setAF;
+        const setHp = target==='player'?setP:setA;
+        const idx = (fieldArr||[]).findIndex(c=>c.usable);
+        if (idx>=0) {
           const card = fieldArr[idx];
-          const block = ELEMENTS.indexOf(card.el) + 1;
+          const block = ELEMENTS.indexOf(card.el)+1;
           showToast(`惰性氣體阻擋 ${block} 點傷害`);
-          dmg = Math.max(0, dmg - block);
-          setField(f => f.filter((_, i) => i !== idx));
+          dmg = Math.max(0, dmg-block);
+          setField(f=>f.filter((_,i)=>i!==idx));
         }
-        setHp(h => Math.max(0, h - dmg));
+        setHp(h=>Math.max(0, h-dmg));
       }
       function handleCombine() {
-        if (turn !== 'player' || gameOver) return;
-        if (!Array.isArray(selEls) || selEls.length < 2) { showToast('請至少選2張'); return; }
-        const cards = selEls.map(i => pHand[i]);
-        if (cards.some(c => c.corroded)) { showToast('腐蝕卡無法合成'); return; }
-        const m = findMol(cards);
-        if (!m) { showToast('無法合成'); return; }
-        setPF(f => [m, ...f]);
-        setPH(h => h.filter((_, i) => !selEls.includes(i)));
+        if (turn!=='player'||gameOver) return;
+        if (!Array.isArray(selEls)||selEls.length<2){ showToast('請至少選2張'); return; }
+        const cards = selEls.map(i=>pHand[i]);
+        if (cards.some(c=>c.corroded)){ showToast('腐蝕卡無法合成'); return; }
+        const m = findMol(cards); if (!m){ showToast('無法合成'); return; }
+        setPF(f=>[m,...f]); setPH(h=>h.filter((_,i)=>!selEls.includes(i)));
         addLog(`合成 ${m.name}`);
-        const dmg = selEls.reduce((s, i) => s + (ELEMENTS.indexOf(pHand[i].el) + 1), 0);
-        applyDamage('ai', dmg);
-        setSelEls([]);
+        const dmg=selEls.reduce((s,i)=>s+(ELEMENTS.indexOf(pHand[i].el)+1),0);
+        applyDamage('ai',dmg); setSelEls([]);
       }
       function handleDiscard() {
-        if (turn !== 'player' || gameOver) return;
-        if (!Array.isArray(selEls) || selEls.length < 1) { showToast('請選擇要棄牌'); return; }
-        if (selEls.length > 3) { showToast('最多棄牌三張'); return; }
-        const names = selEls.map(i => pHand[i].el).join(',');
-        setPH(h => h.filter((_, i) => !selEls.includes(i)));
+        if (turn!=='player'||gameOver) return;
+        if (!Array.isArray(selEls)||selEls.length<1){ showToast('請選擇要棄牌'); return; }
+        if (selEls.length>3){ showToast('最多棄牌三張'); return; }
+        const names=selEls.map(i=>pHand[i].el).join(',');
+        setPH(h=>h.filter((_,i)=>!selEls.includes(i)));
         addLog(`棄牌: ${names}`);
-        setSelEls([]);
-        handleEnd();
+        setSelEls([]); handleEnd();
       }
-      function handleEnd() {
-        if (gameOver) return;
-        setSelEls([]);
-        setSelMol(null);
-        setTurn(t => t === 'player' ? 'ai' : 'player');
-        addLog('結束回合');
-      }
-      function handleSelectEl(i) {
-        if (gameOver || turn !== 'player') return;
-        setSelMol(null);
-        setSelEls(s => Array.isArray(s) ? (s.includes(i) ? s.filter(x => x !== i) : [...s, i]) : [i]);
-      }
-      function handleSelectMol(i) {
-        if (gameOver || turn !== 'player') return;
-        setSelEls([]);
-        setSelMol(selMol === i ? null : i);
-      }
-      const canUse = turn === 'player' && !gameOver && (
-        (selMol !== null && pField[selMol] && pField[selMol].effect !== 'none') ||
-        (Array.isArray(selEls) && selEls.length === 1 && pHand[selEls[0]] && pHand[selEls[0]].usable)
-      );
-      function handleUse() {
-        if (turn !== 'player' || gameOver) return;
-        if (selMol !== null) {
-          const m = pField[selMol];
-          addLog(`使用 分子 ${m.name}`);
-          const dmg = Object.entries(m.formula||{}).reduce((s,[el,n])=>s + (ELEMENTS.indexOf(el)+1)*n,0);
-          applyDamage('ai', dmg);
-          setPF(f => f.filter((_, i) => i !== selMol));
-          setSelMol(null);
-        } else if (Array.isArray(selEls) && selEls.length === 1) {
-          const idx = selEls[0];
-          const card = pHand[idx];
-          if (card.usable) {
-            setPF(f => [card, ...f]);
-            addLog(`使用 惰性氣體 ${card.el}`);
-          } else {
-            addLog(`使用 元素 ${card.el}`);
-          }
-          setPH(h => h.filter((_, i) => i !== idx));
-          setSelEls([]);
+      function handleEnd(){ if (gameOver) return; setSelEls([]); setSelMol(null); setTurn(t=>t==='player'?'ai':'player'); addLog('結束回合'); }
+      function handleSelectEl(i){ if (gameOver||turn!=='player') return; setSelMol(null); setSelEls(s=>Array.isArray(s)?(s.includes(i)?s.filter(x=>x!==i):[...s,i]):[i]); }
+      function handleSelectMol(i){ if (gameOver||turn!=='player') return; setSelEls([]); setSelMol(selMol===i?null:i); }
+      const canUse = turn==='player'&&!gameOver&&((selMol!==null&&pField[selMol]&&pField[selMol].effect!=='none')||(Array.isArray(selEls)&&selEls.length===1&&pHand[selEls[0]]&&pHand[selEls[0]].usable));
+      function handleUse(){ if (turn!=='player'||gameOver) return;
+        if (selMol!==null){ const m=pField[selMol]; addLog(`使用 分子 ${m.name}`);
+          const dmg=Object.entries(m.formula||{}).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);
+          applyDamage('ai',dmg); setPF(f=>f.filter((_,i)=>i!==selMol)); setSelMol(null);
+        }else if (Array.isArray(selEls)&&selEls.length===1){ const idx=selEls[0],card=pHand[idx];
+          if (card.usable){ setPF(f=>[card,...f]); addLog(`使用 惰性氣體 ${card.el}`);} else addLog(`使用 元素 ${card.el}`);
+          setPH(h=>h.filter((_,i)=>i!==idx)); setSelEls([]);
         }
       }
-      React.useEffect(() => {
-        if (gameOver || turn !== 'ai') return;
-        setTimeout(() => {
-          let hand = [...aHand];
-          const sumAtoms = f => Object.entries(f || {}).reduce((s,[el,n])=>s + (ELEMENTS.indexOf(el)+1)*n,0);
-          function tryAction() {
-            const cnt = {};
-            hand.forEach(c=>cnt[c.el] = (cnt[c.el]||0) + 1);
-            const possible = MOLECULES.filter(m=> Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n));
-            if (possible.length>0) {
-              if (Math.random()<0.3) { addLog('AI 選擇結束回合'); return; }
-              possible.sort((a,b)=>sumAtoms(b.formula)-sumAtoms(a.formula));
-              const m = possible[0];
-              const used=[];
-              Object.entries(m.formula).forEach(([el,n])=>{
-                for (let i=hand.length-1;i>=0 && n>0; i--) {
-                  if (hand[i].el===el) { used.push(el); hand.splice(i,1); n--; }
-                }
-              });
-              setAF(f=>[m,...f]);
-              addLog(`AI 合成 ${m.name}`);
-              const dmg = used.reduce((s,el)=>s+(ELEMENTS.indexOf(el)+1),0);
-              applyDamage('player',dmg);
-              addLog(`玩家受 ${dmg} 傷`);
-              tryAction();
-            } else {
-              if (Math.random()<0.5) { addLog('AI 選擇結束回合'); }
-              else {
-                let toDiscard = hand.length>8?3:hand.length>5?2:1;
-                const idxs=[];
-                while(idxs.length<toDiscard && hand.length>0) {
-                  const i=Math.floor(Math.random()*hand.length);
-                  if (!idxs.includes(i)) idxs.push(i);
-                }
-                const names=idxs.map(i=>hand[i].el).join(',');
-                idxs.sort((a,b)=>b-a).forEach(i=>hand.splice(i,1));
-                setAH([...hand]);
-                addLog(`AI 棄牌: ${names}`);
-              }
-            }
-          }
-          tryAction(); handleEnd();
-        },2000);
-      },[turn,gameOver]);
-      const possibleList = React.useMemo(()=>{
-        const cnt={}; pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);
-        return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n))
-          .map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);
-      },[pHand]);
-      return (
-        <div className="game-container">
-          <div className="board">
-            <h1>真實煉金：化合之戰</h1>
-            {gameOver && <div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
-            <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
-            <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>(
-              <div key={i} className={`card molecule ${c.usable?'inert':''}`}> 
-                <div className="symbol">{c.usable?c.el:c.name}</div>
-                {c.usable && <div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
-              </div>))}</div></div>
-            <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>(
-              <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>c.usable?null:handleSelectMol(i)}>
-                {c.usable ? (
-                  <React.Fragment>
-                    <div className="symbol">{c.el}</div>
-                    <div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>
-                  </React.Fragment>
-                ) : (
-                  <div className="name">{c.name}</div>
-                )}
-              </div>))}</div></div>
-            <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>(
-              <div key={i} className={`card element ${c.usable?'inert':''}${selEls.includes(i)?' selected':''}`} onClick={()=>handleSelectEl(i)}>
-                <div className="symbol">{c.el}</div>
-                <div className="number">{ELEMENTS.indexOf(c.el)+1}</div>
-                {c.usable && <div className="defense">防禦傷害</div>}
-              </div>))}</div></div>
-            <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
-            <div className="controls">
-              <button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button>
-                            <button onClick={handleUse} disabled={!canUse}>使用</button>
-              <button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button>
-              <button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button>
+      React.useEffect(()=>{ if (gameOver||turn!=='ai') return; setTimeout(()=>{
+        let hand=[...aHand];
+        // AI 優先使用所有惰性氣體
+        const inertIndices=hand.reduce((arr,c,i)=>(c.usable?[...arr,i]:arr),[]);
+        if (inertIndices.length){ inertIndices.sort((a,b)=>b-a).forEach(i=>{const card=hand.splice(i,1)[0]; setAF(f=>[card,...f]); addLog(`AI 使用 惰性氣體 ${card.el}`);}); }
+        const sumAtoms=f=>Object.entries(f||{}).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);
+        function tryAction(){ const cnt={}; hand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);
+          const possible=MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n));
+          if (possible.length){ if (Math.random()<0.3){addLog('AI 結束回合'); return;} possible.sort((a,b)=>sumAtoms(b.formula)-sumAtoms(a.formula));
+            const m=possible[0],used=[]; Object.entries(m.formula).forEach(([el,n])=>{for(let i=hand.length-1;i>=0&&n>0;i--)if(hand[i].el===el){used.push(el);hand.splice(i,1);n--;}});
+            setAF(f=>[m,...f]); addLog(`AI 合成 ${m.name}`);
+            const dmg=used.reduce((s,el)=>s+(ELEMENTS.indexOf(el)+1),0); applyDamage('player',dmg); addLog(`玩家受 ${dmg} 傷`); tryAction();
+          } else { if (Math.random()<0.5){addLog('AI 結束回合');} else {let toDiscard=hand.length>8?3:hand.length>5?2:1,idxs=[];while(idxs.length<toDiscard&&hand.length){const i=Math.floor(Math.random()*hand.length);if(!idxs.includes(i))idxs.push(i);} const names=idxs.map(i=>hand[i].el).join(','); idxs.sort((a,b)=>b-a).forEach(i=>hand.splice(i,1)); setAH([...hand]); addLog(`AI 棄牌: ${names}`);} }
+        }
+        tryAction(); handleEnd();
+      },2000);},[turn,gameOver]);
+      const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);
+      return(
+        <div className="game-container"><div className="board">
+          <h1>真實煉金：化合之戰</h1>
+          {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
+          <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
+          <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>(
+            <div key={i} className={`card molecule ${c.usable?'inert':''}`}> <div className="symbol">{c.usable?c.el:c.name}</div>{c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}</div>
+          ))}</div></div>
+          <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>(
+            <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>!c.usable&&handleSelectMol(i)}>
+              {c.usable?(
+                <React.Fragment><div className="symbol">{c.el}</div><div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div></React.Fragment>
+              ):(<div className="name">{c.name}</div>)}
             </div>
-            <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
-            <div className="log">{log.map((l,i)=><div key={i}>{l}</div>)}</div>
-          </div>
-        </div>
+          ))}</div></div>
+          <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>(
+            <div key={i} className={`card element ${c.usable?'inert':''}${(Array.isArray(selEls)&&selEls.includes(i))?' selected':''}`} onClick={()=>handleSelectEl(i)}><div className="symbol">{c.el}</div><div className="number">{ELEMENTS.indexOf(c.el)+1}</div>{c.usable&&<div className="defense">防禦傷害</div>}</div>
+          ))}</div></div>
+          <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
+          <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
+          <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
+          <div className="log">{log.map((l,i)=><div key={i}>{l}</div>)}</div>
+        </div></div>
       );
     }
-    ReactDOM.render(<App/>,document.getElementById('root'));
+    ReactDOM.render(<App />,document.getElementById('root'));
   </script>
 </body>
 </html>
