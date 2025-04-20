@@ -352,8 +352,8 @@
             <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
             <div className="controls">
               <button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button>
+                            <button onClick={handleUse} disabled={!canUse}>使用</button>
               <button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button>
-              <button onClick={handleUse} disabled={!canUse}>使用</button>
               <button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button>
             </div>
             <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
