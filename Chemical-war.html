@@ -38,11 +38,24 @@
     .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
     .controls { margin:8px 0; }
-    button { font-family:'Orbitron',sans-serif; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s; }
+    button { font-family:'Orbitron',sans-serif;font-size:1em; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s;}
     button:hover:enabled { background:#334455; }
     button:disabled { opacity:0.5; cursor:not-allowed; }
     .prompt { color:#8cf; margin-top:4px; }
-    .log { text-align:left; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:0.85em; }
+    .log {
+    text-align:left;
+    width:100%;
+    /* 固定7行高度，行高1.2em */
+    line-height:1.2em;
+    height:8.4em;
+    overflow-y:auto;
+    background:#112233;
+    padding:8px;
+    border:1px solid #333;
+    border-radius:4px;
+    margin-top:8px;
+    font-size:1em; /* 原0.85em + 2px */
+}
     /* 手機端響應式優化 */
   @media (orientation: portrait) {
     .board { width:100%; padding:0.5em; }
@@ -275,7 +288,7 @@
           <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>(
             <div key={i} className={`card molecule ${c.usable?'inert':''}`}> <div className="symbol">{c.usable?c.el:c.name}</div>{c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}</div>
           ))}</div></div>
-          <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>(
+                   <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>(
             <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>!c.usable&&handleSelectMol(i)}>
               {c.usable?(
                 <React.Fragment><div className="symbol">{c.el}</div><div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div></React.Fragment>
@@ -288,8 +301,9 @@
           <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
           <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
           <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span className="hp-text">{pHP}</span></div>
-          <div className="log">{log.map((l,i)=><div key={i}>{l}</div>)}</div>
-        </div></div>
+          <div className="log">{log.slice(0,7).map((l,i)=><div key={i} style={{ color: i===0 ? '#ff0' : '#ccc' }}>{l}</div>)}</div>)}</div>
+ 
+        </div>
       );
     }
     ReactDOM.render(<App />,document.getElementById('root'));
