@@ -18,16 +18,12 @@
     .hp-inner { background:#0ff; height:100%; }
     .zone { margin:12px 0; }
     .zone-title { color:#ccc; margin-bottom:4px; }
-    .hand, .field {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-      gap: 0.5em;
-      justify-content: center;
-    }
+    .hand, .field { display:flex; flex-wrap:wrap; justify-content:center; }
     .card { border:1px solid #555; border-radius:6px; padding:6px; margin:4px; transition:transform .2s; display:flex; flex-direction:column; align-items:center; }
     .card:hover { transform:translateY(-4px); }
     .card.element { width:50px; height:70px; background:#1f2a36; cursor:pointer; position:relative; }
     .card.element.inert { background:#555; }
+    .card.element.alkali { background:#a00; } /* 1A族紅色背景 */
     .card.element .symbol { font-size:1.2em; margin-top:4px; }
     .card.element .number { position:absolute; top:4px; right:6px; font-size:0.8em; color:#0ff; }
     .card.element .defense { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
@@ -38,26 +34,12 @@
     .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
     .controls { margin:8px 0; }
-    button { font-family:'Orbitron',sans-serif;font-size:1em; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s;}
+    button { font-family:'Orbitron',sans-serif; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s; }
     button:hover:enabled { background:#334455; }
     button:disabled { opacity:0.5; cursor:not-allowed; }
     .prompt { color:#8cf; margin-top:4px; }
-    .log {
-    text-align:left;
-    width:100%;
-    /* 固定7行高度，行高1.2em */
-    line-height:1.2em;
-    height:8.4em;
-    overflow-y:auto;
-    background:#112233;
-    padding:8px;
-    border:1px solid #333;
-    border-radius:4px;
-    margin-top:8px;
-    font-size:1em; /* 原0.85em + 2px */
-}
-    /* 手機端響應式優化 */
-  @media (orientation: portrait) {
+    .log { text-align:left; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:1em; } /* 日誌字體較大 */
+    @media (orientation: portrait) {
     .board { width:100%; padding:0.5em; }
     .hp-section { flex-direction: column; }
     .hp-label, .hp-text { margin: 2px 0; }
@@ -71,7 +53,7 @@
     .controls { flex-direction: column; }
     .prompt, .log { font-size: 0.8em; }
   }
-</style>
+  </style>
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -82,231 +64,171 @@
   <script type="text/babel">
     const MAX_HP = 128;
     const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"];
-    const WEIGHTS = { H:6, C:4, O:4, N:3, Na:3, He:0.5, Ne:0.5, Ar:0.5 };
+    const ALKALI = ["Li","Na","K"]; // 1A族
+    const WEIGHTS = {H:6,C:4,O:4,N:3,Na:3,He:0.5,Ne:0.5,Ar:0.5};
     const drawPool = [];
     ELEMENTS.forEach(e => {
-      const w = WEIGHTS[e] || 1;
-      for (let i = 0; i < Math.round(w * 2); i++) drawPool.push(e);
+      const w = WEIGHTS[e]||1;
+      for (let i=0;i<Math.round(w*2);i++) drawPool.push(e);
     });
-    function drawCard() {
-      const el = drawPool[Math.floor(Math.random() * drawPool.length)];
-      return { el, corroded: false, usable: ['He','Ne','Ar'].includes(el) };
+    function drawCard(){
+      const el = drawPool[Math.floor(Math.random()*drawPool.length)];
+      return { el, corroded:false, usable:['He','Ne','Ar'].includes(el) };
     }
     const MOLECULES = [
-    { name:"水", formula:{H:2,O:1}, effect:"none" },
-      { name:"氯化鈉", formula:{Na:1,Cl:1}, effect:"none" },
-      { name:"鹽酸", formula:{H:1,Cl:1}, effect:"corrosion" },
-      { name:"硫酸", formula:{H:2,S:1,O:4}, effect:"corrosion" },
-      { name:"硝酸", formula:{H:1,N:1,O:3}, effect:"corrosion" },
-      { name:"氰酸", formula:{H:1,C:1,N:1,O:1}, effect:"poison" },
-      { name:"氫氧化鈉", formula:{Na:1,O:1,H:1}, effect:"corrosion" },
-      { name:"光氣", formula:{C:1,O:1,Cl:2}, effect:"poison" },
-      { name:"氯仿", formula:{C:1,H:1,Cl:3}, effect:"poison" },
-      { name:"甲烷", formula:{C:1,H:4}, effect:"burn" },
-      { name:"乙炔", formula:{C:2,H:2}, effect:"burn" },
-      { name:"乙烯", formula:{C:2,H:4}, effect:"burn" },
-      { name: "氮氣", formula: { N: 2 }, effect: "none" },
+      { name: "一氧化氮", formula: { N: 1, O: 1 }, effect: "poison" },
+{ name: "一氧化碳", formula: { C: 1, O: 1 }, effect: "poison" },
+{ name: "乙炔", formula:{C:2,H:2}, effect:"burn" },
+{ name: "乙烯", formula:{C:2,H:4}, effect:"burn" },
+{ name: "二氧化碳", formula: { C: 1, O: 2 }, effect: "none" },
+{ name: "水", formula:{H:2,O:1}, effect:"none" },
+{ name: "甲烷", formula:{C:1,H:4}, effect:"burn" },
+{ name: "光氣", formula:{C:1,O:1,Cl:2}, effect:"poison" },
+{ name: "氟化鈉", formula: { Na: 1, F: 1 }, effect: "none" },
+{ name: "氟化鈹", formula: { Be: 1, F: 2 }, effect: "none" },
+{ name: "氟化鉀", formula: { K: 1, F: 1 }, effect: "none" },
+{ name: "氟化鋁", formula: { Al: 1,F: 3 }, effect: "none" },
+{ name: "氟化鋰", formula: { Li: 1, F: 1 }, effect: "none" },
+{ name: "氟化鎂", formula: { Mg: 1, F: 2 }, effect: "none" },
+{ name: "氧化鈉", formula: { Na: 2, O: 1 }, effect: "none" },
+{ name: "氧化鈣", formula: { Ca: 1, O: 1 }, effect: "none" },
+{ name: "氧化鈹", formula: { Be: 1, O: 1 }, effect: "none" },
+{ name: "氧化鉀", formula: { K: 2, O: 1 }, effect: "none" },
+{ name: "氧化鋁", formula: { Al: 2, O: 3 }, effect: "none" },
+{ name: "氧化鋰", formula: { Li: 2, O: 1 }, effect: "none" },
+{ name: "氧化鎂", formula: { Mg: 1, O: 1 }, effect: "none" },
 { name: "氧氣", formula: { O: 2 }, effect: "none" },
 { name: "臭氧", formula: { O: 3 }, effect: "poison" },
-{ name: "氫氣", formula: { H: 2 }, effect: "none" },
-{ name: "氯氣", formula: { Cl: 2 }, effect: "poison" },
 { name: "氫氟酸", formula: { H: 1, F: 1 }, effect: "corrosion" },
-{ name: "一氧化碳", formula: { C: 1, O: 1 }, effect: "poison" },
-{ name: "二氧化碳", formula: { C: 1, O: 2 }, effect: "none" },
-{ name: "一氧化氮", formula: { N: 2, O: 1 }, effect: "poison" },
+{ name: "氫氣", formula: { H: 2 }, effect: "none" },
+{ name: "氫氧化鈉", formula:{Na:1,O:1,H:1}, effect:"corrosion" },
+{ name: "氫氧化鈣", formula: { Ca: 1, O: 2, H: 2 }, effect: "corrosion" },
+{ name: "氫氧化鉀", formula: { K: 1, O: 1, H: 1 }, effect: "corrosion" },
+{ name: "氫氧化鋁", formula: { Al: 1, O: 3, H: 3 }, effect: "none" },
+{ name: "氫氧化鋰", formula: { Li: 1, O: 1, H: 1 }, effect: "corrosion" },
+{ name: "氫氧化鎂", formula: { Mg: 1, O: 2, H: 2 }, effect: "none" },
+{ name: "氮化鈉", formula: { Na: 3, N: 1 }, effect: "none" },
+{ name: "氮化鉀", formula: { K: 3, N: 1 }, effect: "none" },
+{ name: "氮化鋁", formula: { Al: 1, N: 1 }, effect: "none" },
+{ name: "氮化鋰", formula: { Li: 3, N: 1 }, effect: "none" },
+{ name: "氮氣", formula: { N: 2 }, effect: "none" },
+{ name: "氯化鈉", formula:{Na:1,Cl:1}, effect:"none" },
+{ name: "氯化鈹", formula: { Be: 1, Cl: 2 }, effect: "none" },
+{ name: "氯化鉀", formula: { K: 1, Cl: 1 }, effect: "none" },
+{ name: "氯化鋁", formula: { Al: 1, Cl: 3 }, effect: "none" },
+{ name: "氯化鋰", formula: { Li: 1, Cl: 1 }, effect: "none" },
+{ name: "氯化鎂", formula: { Mg: 1, Cl: 2 }, effect: "none" },
+{ name: "氯仿", formula:{C:1,H:1,Cl:3}, effect:"poison" },
+{ name: "氯氣", formula: { Cl: 2 }, effect: "poison" },
+{ name: "氰酸", formula:{H:1,C:1,N:1,O:1}, effect:"poison" },
+{ name: "硝酸", formula:{H:1,N:1,O:3}, effect:"corrosion" },
+{ name: "硫化鈉", formula: { Na: 2, S: 1 }, effect: "none" },
+{ name: "硫化鈹", formula: { Be: 1, S: 1 }, effect: "none" },
+{ name: "硫化鉀", formula: { K: 2, S: 1 }, effect: "none" },
+{ name: "硫化鋁", formula: { Al: 2, S: 3 }, effect: "none" },
+{ name: "硫化鋰", formula: { Li: 2, S: 1 }, effect: "none" },
+{ name: "硫化鎂", formula: { Mg: 1, S: 1 }, effect: "none" },
+{ name: "硫酸", formula:{H:2,S:1,O:4}, effect:"corrosion" },
+{ name: "溴化鈉", formula: { Na: 1, Br: 1 }, effect: "none" },
+{ name: "溴化鉀", formula: { K: 1, Br: 1 }, effect: "none" },
+{ name: "溴化鋰", formula: { Li: 1, Br: 1 }, effect: "none" },
+{ name: "溴化鎂", formula: { Mg: 1, Br: 2 }, effect: "none" },
+{ name: "碘化鈉", formula: { Na: 1, I: 1 }, effect: "none" },
+{ name: "碘化鉀", formula: { K: 1, I: 1 }, effect: "none" },
 { name: "碳化矽", formula: { C: 1, Si: 1 }, effect: "poison" },
-      { name: "氧化鈣", formula: { Ca: 1, O: 1 }, effect: "none" },
-  { name: "氟化鈉", formula: { Na: 1, F: 1 }, effect: "none" },
-  { name: "溴化鈉", formula: { Na: 1, Br: 1 }, effect: "none" },
-  { name: "碘化鈉", formula: { Na: 1, I: 1 }, effect: "none" },
-  { name: "硫化鈉", formula: { Na: 2, S: 1 }, effect: "none" },
-  { name: "氧化鈉", formula: { Na: 2, O: 1 }, effect: "none" },
-  { name: "氮化鈉", formula: { Na: 3, N: 1 }, effect: "none" },
-  { name: "磷化鈉", formula: { Na: 3, P: 1 }, effect: "none" },
-  { name: "氯化鋰", formula: { Li: 1, Cl: 1 }, effect: "none" },
-  { name: "氟化鋰", formula: { Li: 1, F: 1 }, effect: "none" },
-  { name: "溴化鋰", formula: { Li: 1, Br: 1 }, effect: "none" },
-  { name: "硫化鋰", formula: { Li: 2, S: 1 }, effect: "none" },
-       { name: "氧化鋰", formula: { Li: 2, O: 1 }, effect: "none" },
-  { name: "氮化鋰", formula: { Li: 3, N: 1 }, effect: "none" },
-  { name: "磷化鋰", formula: { Li: 3, P: 1 }, effect: "none" },
-  { name: "氯化鉀", formula: { K: 1, Cl: 1 }, effect: "none" },
-  { name: "氟化鉀", formula: { K: 1, F: 1 }, effect: "none" },
-  { name: "溴化鉀", formula: { K: 1, Br: 1 }, effect: "none" },
-  { name: "碘化鉀", formula: { K: 1, I: 1 }, effect: "none" },
-  { name: "硫化鉀", formula: { K: 2, S: 1 }, effect: "none" },
-  { name: "氧化鉀", formula: { K: 2, O: 1 }, effect: "none" },
-  { name: "氮化鉀", formula: { K: 3, N: 1 }, effect: "none" },
-  { name: "磷化鉀", formula: { K: 3, P: 1 }, effect: "none" },
-  { name: "氯化鎂", formula: { Mg: 1, Cl: 2 }, effect: "none" },
-  { name: "氟化鎂", formula: { Mg: 1, F: 2 }, effect: "none" },
-  { name: "溴化鎂", formula: { Mg: 1, Br: 2 }, effect: "none" },
-  { name: "氧化鎂", formula: { Mg: 1, O: 1 }, effect: "none" },
-  { name: "硫化鎂", formula: { Mg: 1, S: 1 }, effect: "none" },
-  { name: "氯化鈹", formula: { Be: 1, Cl: 2 }, effect: "none" },
-  { name: "氟化鈹", formula: { Be: 1, F: 2 }, effect: "none" },
-  { name: "氧化鈹", formula: { Be: 1, O: 1 }, effect: "none" },
-  { name: "硫化鈹", formula: { Be: 1, S: 1 }, effect: "none" },
-  { name: "氯化鋁", formula: { Al: 1, Cl: 3 }, effect: "none" },
-  { name: "氟化鋁", formula: { Al: 1,F: 3 }, effect: "none" },
-  { name: "氧化鋁", formula: { Al: 2, O: 3 }, effect: "none" },
-  { name: "硫化鋁", formula: { Al: 2, S: 3 }, effect: "none" },
-  { name: "氮化鋁", formula: { Al: 1, N: 1 }, effect: "none" },
-  { name: "磷化鋁", formula: { Al: 1, P: 1 }, effect: "none" },
-  { name: "氫氧化鋰", formula: { Li: 1, O: 1, H: 1 }, effect: "corrosion" },
-  { name: "氫氧化鉀", formula: { K: 1, O: 1, H: 1 }, effect: "corrosion" },
-  { name: "氫氧化鈣", formula: { Ca: 1, O: 2, H: 2 }, effect: "corrosion" },
-  { name: "氫氧化鎂", formula: { Mg: 1, O: 2, H: 2 }, effect: "none" },
-  { name: "氫氧化鋁", formula: { Al: 1, O: 3, H: 3 }, effect: "none" }
+{ name: "磷化鈉", formula: { Na: 3, P: 1 }, effect: "none" },
+{ name: "磷化鉀", formula: { K: 3, P: 1 }, effect: "none" },
+{ name: "磷化鋁", formula: { Al: 1, P: 1 }, effect: "none" },
+{ name: "磷化鋰", formula: { Li: 3, P: 1 }, effect: "none" },
+{ name: "鹽酸", formula:{H:1,Cl:1}, effect:"corrosion" }
 
     ];
-    function findMol(sel) {
-      const cnt = {};
-      sel.forEach(c => c && c.el && (cnt[c.el] = (cnt[c.el]||0) + 1));
-      for (const m of MOLECULES) {
-        const f = m.formula;
-        if (Object.values(f).reduce((a,b)=>a+b,0) !== sel.length) continue;
-        let ok = true;
-        for (const k in f) if (cnt[k] !== f[k]) ok = false;
-        for (const k in cnt) if (!f[k]) ok = false;
-        if (ok) return m;
+    function findMol(sel){
+      const cnt={}; sel.forEach(c=>c&&c.el&&(cnt[c.el]=(cnt[c.el]||0)+1));
+      for(const m of MOLECULES){ const f=m.formula;
+        if(Object.values(f).reduce((a,b)=>a+b,0)!==sel.length) continue;
+        let ok=true; for(const k in f) if(cnt[k]!==f[k]) ok=false;
+        for(const k in cnt) if(!f[k]) ok=false;
+        if(ok) return m;
       }
       return null;
     }
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2000);
+    function showToast(msg){const t=document.getElementById('toast');t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000);}
+    function App(){
+      const [turn,setTurn]=React.useState('player');
+      const [pHP,setP]=React.useState(MAX_HP);
+      const [aHP,setA]=React.useState(MAX_HP);
+      const [pHand,setPH]=React.useState([]);
+      const [aHand,setAH]=React.useState([]);
+      const [pField,setPF]=React.useState([]);
+      const [aField,setAF]=React.useState([]);
+      const [selEls,setSelEls]=React.useState([]);
+      const [selMol,setSelMol]=React.useState(null);
+      const [log,setLog]=React.useState([]);
+      const [gameOver,setGameOver]=React.useState(null);
+      const firstDraw=React.useRef(true);
+      const addLog=msg=>setLog(l=>[msg,...l]);
+      const resetGame=()=>{setP(MAX_HP);setA(MAX_HP);setPH(Array.from({length:5},drawCard));setAH(Array.from({length:5},drawCard));setPF([]);setAF([]);setSelEls([]);setSelMol(null);setLog([]);setGameOver(null);setTurn('player');firstDraw.current=true;addLog('遊戲重置，玩家先手');};
+      React.useEffect(()=>resetGame(),[]);
+      React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} if(turn==='player'){setPH(h=>[...h,drawCard(),drawCard()]);addLog('玩家抽2張');}else{setAH(h=>[...h,drawCard(),drawCard()]);addLog('AI抽2張');}},[turn,gameOver]);
+      React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
+      const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
+      const handleCombine=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<2){showToast('請至少選2張');return;}const cards=selEls.map(i=>pHand[i]);if(cards.some(c=>c.corroded)){showToast('腐蝕卡無法合成');return;}const m=findMol(cards);if(!m){showToast('無法合成');return;}setPF(f=>[m,...f]);setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`合成 ${m.name}`);const dmg=selEls.reduce((s,i)=>s+(ELEMENTS.indexOf(pHand[i].el)+1),0);applyDamage('ai',dmg);setSelEls([]);};  
+      const handleDiscard=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<1){showToast('請選擇要棄牌');return;}if(selEls.length>3){showToast('最多棄牌三張');return;}const names=selEls.map(i=>pHand[i].el).join(',');setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`棄牌: ${names}`);setSelEls([]);handleEnd();};  
+      const handleEnd=()=>{if(gameOver)return;setSelEls([]);setSelMol(null);setTurn(t=>t==='player'?'ai':'player');addLog('結束回合');};  
+      const handleSelectEl=i=>{if(gameOver||turn!=='player')return;setSelMol(null);setSelEls(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i]);};  
+      const handleSelectMol=i=>{if(gameOver||turn!=='player')return;setSelEls([]);setSelMol(selMol===i?null:i);};  
+      const hasWater = pField.some(m => m.name === '水') || aField.some(m => m.name === '水');
+      const canUse = (turn === 'player' && !gameOver) && (
+        (selMol !== null && pField[selMol].effect !== 'none') ||
+        (selEls.length === 1 && (
+          pHand[selEls[0]].usable ||
+          (ALKALI.includes(pHand[selEls[0]].el) && hasWater)
+        ))
+      );  
+      const handleUse=()=>{if(turn!=='player'||gameOver)return;if(selMol!==null){const m=pField[selMol];addLog(`使用 分子 ${m.name}`);const dmg=Object.entries(m.formula||{}).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);applyDamage('ai',dmg);setPF(f=>f.filter((_,i)=>i!==selMol));setSelMol(null);}else if(selEls.length===1){const idx=selEls[0];const card=pHand[idx];if(card.usable){setPF(f=>[card,...f]);addLog(`使用 惰性氣體 ${card.el}`);}else{addLog(`使用 元素 ${card.el}`);}setPH(h=>h.filter((_,i)=>i!==idx));setSelEls([]);} };  
+      React.useEffect(()=>{if(gameOver||turn!=='ai')return;setTimeout(()=>{let hand=[...aHand];let field=[...aField];const sumAtoms=f=>Object.entries(f).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);const tryAction=()=>{const possible=MOLECULES.filter(m=>{const cnt={};hand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n);});if(possible.length>0){if(Math.random()<0.3){addLog('AI 選擇結束回合');return;}possible.sort((a,b)=>sumAtoms(b.formula)-sumAtoms(a.formula));const m=possible[0];const used=[];Object.entries(m.formula).forEach(([el,n])=>{for(let i=hand.length-1;i>=0&&n>0;i--)if(hand[i].el===el){used.push(el);hand.splice(i,1);n--;}});setAF(f=>[m,...f]);addLog(`AI 合成 ${m.name}`);const dmg=used.reduce((s,el)=>s+(ELEMENTS.indexOf(el)+1),0);applyDamage('player',dmg);addLog(`玩家受 ${dmg} 傷`);tryAction();}else{if(Math.random()<0.5){addLog('AI 選擇結束回合');}else{let toDiscard=hand.length>8?3:hand.length>5?2:1;const idxs=[];while(idxs.length<toDiscard&&hand.length>0){const i=Math.floor(Math.random()*hand.length);if(!idxs.includes(i))idxs.push(i);}const names=idxs.map(i=>hand[i].el).join(',');idxs.sort((a,b)=>b-a).forEach(i=>hand.splice(i,1));setAH([...hand]);addLog(`AI 棄牌: ${names}`);} } };tryAction();handleEnd();},2000);},[turn,gameOver]);  
+      const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);  
+      return(<div className="game-container"><div className="board">
+        <h1>真實煉金：化合之戰</h1>
+        {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
+        <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
+        <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
+          <div key={i} className={`card molecule ${c.usable?'inert':''}`}>
+            <div className="symbol">{c.usable?c.el:c.name}</div>
+            {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
+          </div>
+        )}</div></div>
+        <div className="log">{log.slice(0,7).map((l,i)=>
+          <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
+        )}</div>
+        <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
+          <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>handleSelectMol(i)}>
+            {c.usable
+              ? React.createElement(React.Fragment, null,
+                  React.createElement("div", { className: "symbol" }, c.el),
+                  React.createElement("div", { className: "block-info" }, `阻擋${ELEMENTS.indexOf(c.el)+1}傷害`)
+                )
+              : React.createElement("div", { className: "name" }, c.name)
+            }
+          </div>
+        )}</div></div>
+        <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
+          <div key={i}
+               className={`card element ${c.usable?'inert':''}${ALKALI.includes(c.el)?' alkali':''}${selEls.includes(i)?' selected':''}`}
+               onClick={()=>handleSelectEl(i)}>
+            <div className="symbol">{c.el}</div>
+            <div className="number">{ELEMENTS.indexOf(c.el)+1}</div>
+            {c.usable&&<div className="defense">防禦傷害</div>}
+            {ALKALI.includes(c.el)&&<div className="explode">引爆水</div>}
+          </div>
+        )}</div></div>
+        <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
+        <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||selEls.length<2}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||selEls.length<1}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
+        <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
+      </div></div>);
     }
-    function App() {
-      const [turn, setTurn] = React.useState('player');
-      const [pHP, setP] = React.useState(MAX_HP);
-      const [aHP, setA] = React.useState(MAX_HP);
-      const [pHand, setPH] = React.useState([]);
-      const [aHand, setAH] = React.useState([]);
-      const [pField, setPF] = React.useState([]);
-      const [aField, setAF] = React.useState([]);
-      const [selEls, setSelEls] = React.useState([]);
-      const [selMol, setSelMol] = React.useState(null);
-      const [log, setLog] = React.useState([]);
-      const [gameOver, setGameOver] = React.useState(null);
-      const firstDraw = React.useRef(true);
-      const addLog = msg => setLog(l => [msg, ...l]);
-      function resetGame() {
-        setP(MAX_HP);
-        setA(MAX_HP);
-        setPH(Array.from({length:5}, drawCard));
-        setAH(Array.from({length:5}, drawCard));
-        setPF([]);
-        setAF([]);
-        setSelEls([]);
-        setSelMol(null);
-        setLog([]);
-        setGameOver(null);
-        setTurn('player');
-        firstDraw.current = true;
-        addLog('遊戲重置，玩家先手');
-      }
-      React.useEffect(() => resetGame(), []);
-      React.useEffect(() => {
-        if (gameOver) return;
-        if (firstDraw.current) { firstDraw.current = false; return; }
-        if (turn === 'player') { setPH(h => [...h, drawCard(), drawCard()]); addLog('玩家抽2張'); }
-        else { setAH(h => [...h, drawCard(), drawCard()]); addLog('AI抽2張'); }
-      }, [turn, gameOver]);
-      React.useEffect(() => { if (pHP <= 0) setGameOver('lose'); else if (aHP <= 0) setGameOver('win'); }, [pHP, aHP]);
-      function applyDamage(target, dmg) {
-        const fieldArr = target==='player'?pField:aField;
-        const setField = target==='player'?setPF:setAF;
-        const setHp = target==='player'?setP:setA;
-        const idx = (fieldArr||[]).findIndex(c=>c.usable);
-        if (idx>=0) {
-          const card = fieldArr[idx];
-          const block = ELEMENTS.indexOf(card.el)+1;
-          showToast(`惰性氣體阻擋 ${block} 點傷害`);
-          dmg = Math.max(0, dmg-block);
-          setField(f=>f.filter((_,i)=>i!==idx));
-        }
-        setHp(h=>Math.max(0, h-dmg));
-      }
-      function handleCombine() {
-        if (turn!=='player'||gameOver) return;
-        if (!Array.isArray(selEls)||selEls.length<2){ showToast('請至少選2張'); return; }
-        const cards = selEls.map(i=>pHand[i]);
-        if (cards.some(c=>c.corroded)){ showToast('腐蝕卡無法合成'); return; }
-        const m = findMol(cards); if (!m){ showToast('無法合成'); return; }
-        setPF(f=>[m,...f]); setPH(h=>h.filter((_,i)=>!selEls.includes(i)));
-        addLog(`合成 ${m.name}`);
-        const dmg=selEls.reduce((s,i)=>s+(ELEMENTS.indexOf(pHand[i].el)+1),0);
-        applyDamage('ai',dmg); setSelEls([]);
-      }
-      function handleDiscard() {
-        if (turn!=='player'||gameOver) return;
-        if (!Array.isArray(selEls)||selEls.length<1){ showToast('請選擇要棄牌'); return; }
-        if (selEls.length>3){ showToast('最多棄牌三張'); return; }
-        const names=selEls.map(i=>pHand[i].el).join(',');
-        setPH(h=>h.filter((_,i)=>!selEls.includes(i)));
-        addLog(`棄牌: ${names}`);
-        setSelEls([]); handleEnd();
-      }
-      function handleEnd(){ if (gameOver) return; setSelEls([]); setSelMol(null); setTurn(t=>t==='player'?'ai':'player'); addLog('結束回合'); }
-      function handleSelectEl(i){ if (gameOver||turn!=='player') return; setSelMol(null); setSelEls(s=>Array.isArray(s)?(s.includes(i)?s.filter(x=>x!==i):[...s,i]):[i]); }
-      function handleSelectMol(i){ if (gameOver||turn!=='player') return; setSelEls([]); setSelMol(selMol===i?null:i); }
-      const canUse = turn==='player'&&!gameOver&&((selMol!==null&&pField[selMol]&&pField[selMol].effect!=='none')||(Array.isArray(selEls)&&selEls.length===1&&pHand[selEls[0]]&&pHand[selEls[0]].usable));
-      function handleUse(){ if (turn!=='player'||gameOver) return;
-        if (selMol!==null){ const m=pField[selMol]; addLog(`使用 分子 ${m.name}`);
-          const dmg=Object.entries(m.formula||{}).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);
-          applyDamage('ai',dmg); setPF(f=>f.filter((_,i)=>i!==selMol)); setSelMol(null);
-        }else if (Array.isArray(selEls)&&selEls.length===1){ const idx=selEls[0],card=pHand[idx];
-          if (card.usable){ setPF(f=>[card,...f]); addLog(`使用 惰性氣體 ${card.el}`);} else addLog(`使用 元素 ${card.el}`);
-          setPH(h=>h.filter((_,i)=>i!==idx)); setSelEls([]);
-        }
-      }
-      React.useEffect(()=>{ if (gameOver||turn!=='ai') return; setTimeout(()=>{
-        let hand=[...aHand];
-        // AI 優先使用所有惰性氣體
-        const inertIndices=hand.reduce((arr,c,i)=>(c.usable?[...arr,i]:arr),[]);
-        if (inertIndices.length){ inertIndices.sort((a,b)=>b-a).forEach(i=>{const card=hand.splice(i,1)[0]; setAF(f=>[card,...f]); addLog(`AI 使用 惰性氣體 ${card.el}`);}); }
-        const sumAtoms=f=>Object.entries(f||{}).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);
-        function tryAction(){ const cnt={}; hand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);
-          const possible=MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n));
-          if (possible.length){ if (Math.random()<0.3){addLog('AI 結束回合'); return;} possible.sort((a,b)=>sumAtoms(b.formula)-sumAtoms(a.formula));
-            const m=possible[0],used=[]; Object.entries(m.formula).forEach(([el,n])=>{for(let i=hand.length-1;i>=0&&n>0;i--)if(hand[i].el===el){used.push(el);hand.splice(i,1);n--;}});
-            setAF(f=>[m,...f]); addLog(`AI 合成 ${m.name}`);
-            const dmg=used.reduce((s,el)=>s+(ELEMENTS.indexOf(el)+1),0); applyDamage('player',dmg); addLog(`玩家受 ${dmg} 傷`); tryAction();
-          } else { if (Math.random()<0.5){addLog('AI 結束回合');} else {let toDiscard=hand.length>8?3:hand.length>5?2:1,idxs=[];while(idxs.length<toDiscard&&hand.length){const i=Math.floor(Math.random()*hand.length);if(!idxs.includes(i))idxs.push(i);} const names=idxs.map(i=>hand[i].el).join(','); idxs.sort((a,b)=>b-a).forEach(i=>hand.splice(i,1)); setAH([...hand]); addLog(`AI 棄牌: ${names}`);} }
-        }
-        tryAction(); handleEnd();
-      },2000);},[turn,gameOver]);
-      const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);
-      return(
-        <div className="game-container"><div className="board">
-          <h1>真實煉金：化合之戰</h1>
-          {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
-          <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span className="hp-text">{aHP}</span></div>
-          <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>(
-            <div key={i} className={`card molecule ${c.usable?'inert':''}`}> <div className="symbol">{c.usable?c.el:c.name}</div>{c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}</div>
-          ))}</div></div>
-                   <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>(
-            <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>!c.usable&&handleSelectMol(i)}>
-              {c.usable?(
-                <React.Fragment><div className="symbol">{c.el}</div><div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div></React.Fragment>
-              ):(<div className="name">{c.name}</div>)}
-            </div>
-          ))}</div></div>
-          <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>(
-            <div key={i} className={`card element ${c.usable?'inert':''}${(Array.isArray(selEls)&&selEls.includes(i))?' selected':''}`} onClick={()=>handleSelectEl(i)}><div className="symbol">{c.el}</div><div className="number">{ELEMENTS.indexOf(c.el)+1}</div>{c.usable&&<div className="defense">防禦傷害</div>}</div>
-          ))}</div></div>
-          <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
-          <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
-          <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span className="hp-text">{pHP}</span></div>
-          <div className="log">{log.slice(0,7).map((l,i)=><div key={i} style={{ color: i===0 ? '#ff0' : '#ccc' }}>{l}</div>)}</div>)}</div>
- 
-        </div>
-      );
-    }
-    ReactDOM.render(<App />,document.getElementById('root'));
+    ReactDOM.render(<App/>,document.getElementById('root'));
   </script>
 </body>
 </html>
