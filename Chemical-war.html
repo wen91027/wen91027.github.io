@@ -38,7 +38,22 @@
     button:disabled { opacity:0.5; cursor:not-allowed; }
     .prompt { color:#8cf; margin-top:4px; }
     .log { text-align:left; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:0.85em; }
-  </style>
+    /* 手機端響應式優化 */
+  @media (max-width: 640px) {
+    .board { width:100%; padding:0.5em; }
+    .hp-section { flex-direction: column; }
+    .hp-label, .hp-text { margin: 2px 0; }
+    .hp-bar { flex: none !important; width: 100% !important; margin: 4px 0; }
+    .zone-title { font-size: 0.9em; }
+    .hand, .field { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.25em; }
+    .card { margin: 2px; padding: 4px; min-width: 60px; }
+    .card.element { width: auto; height: 60px; }
+    .card.molecule { width: auto; min-height: 50px; }
+    button { width: 100%; margin: 4px 0; padding: 8px; }
+    .controls { flex-direction: column; }
+    .prompt, .log { font-size: 0.8em; }
+  }
+</style>
 </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -251,7 +266,7 @@
         <div className="game-container"><div className="board">
           <h1>真實煉金：化合之戰</h1>
           {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
-          <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
+          <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span className="hp-text">{aHP}</span></div>
           <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>(
             <div key={i} className={`card molecule ${c.usable?'inert':''}`}> <div className="symbol">{c.usable?c.el:c.name}</div>{c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}</div>
           ))}</div></div>
@@ -267,7 +282,7 @@
           ))}</div></div>
           <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
           <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=2)}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||!(Array.isArray(selEls)&&selEls.length>=1)}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
-          <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
+          <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span className="hp-text">{pHP}</span></div>
           <div className="log">{log.map((l,i)=><div key={i}>{l}</div>)}</div>
         </div></div>
       );
