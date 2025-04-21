@@ -214,7 +214,8 @@
             const waterMol = MOLECULES.find((m) => m.name === '水');
             const waterAtomNum = Object.entries(waterMol.formula).reduce((s, [el, n]) => s + (ELEMENTS.indexOf(el) + 1) * n, 0);
             const dmg = (atomNum + waterAtomNum) * waterCount;
-            addLog(`1A族引爆了水分子，造成 ${dmg} 傷害`);
+            showToast(`實驗室爆炸了！造成${dmg}點傷害`);
+            addLog(`實驗室爆炸了！造成${dmg}點傷害`);
             applyDamage('ai', dmg);
             // 消耗使用的元素牌
             setPH((h) => h.filter((_, i) => i !== idx));
