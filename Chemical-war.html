@@ -310,6 +310,7 @@
       const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);  
  
       return(<div className="game-container"><div className="board">
+        <h1>真實煉金：化合之戰</h1>
         <img src="https://wen91027.github.io/img/background_logo.jpeg" alt="遊戲首圖" className="bg-logo" />
 
 
