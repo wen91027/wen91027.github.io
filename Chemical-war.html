@@ -18,7 +18,8 @@
     .hp-inner { background:#0ff; height:100%; }
     .zone { margin:12px 0; }
     .zone-title { color:#ccc; margin-bottom:4px; }
-    .hand, .field { display:flex; flex-wrap:wrap; justify-content:center; }
+    .hand { display:flex; flex-wrap:wrap; justify-content:center; }
+    .field { display:flex; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; }
     .card { border:1px solid #555; border-radius:6px; padding:6px; margin:4px; transition:transform .2s; display:flex; flex-direction:column; align-items:center; }
     .card:hover { transform:translateY(-4px); }
     .card.element { width:50px; height:70px; background:#1f2a36; cursor:pointer; position:relative; }
@@ -34,7 +35,7 @@
     .card.molecule.corrosion { background:#661100; }
     .card.molecule.poison    { background:#440066; }
     .card.molecule.burn      { background:#663300; }
-    .card.molecule.recover   { background:#00AEAE; }
+    .card.molecule.recover   { background:#00AEAE; border:2px solid #fff; box-shadow:0 0 8px #fff;}
     .card.molecule.inert     { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
     .card.molecule.inert .symbol    { font-size:1em; margin:4px 0; }
     .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
@@ -49,6 +50,19 @@
     .log { text-align:center; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:1em; }
     @media (orientation: portrait) {
     .board { width:100%; padding:0.5em; }
+    .hp-section { flex-direction: column; }
+    .hp-label, .hp-text { margin: 2px 0; }
+    .hp-bar { flex: none !important; width: 100% !important; margin: 4px 0; }
+    .zone-title { font-size: 0.9em; }
+    .hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 0.25em; }
+    .field { display: flex; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+    .card { margin: 2px; padding: 4px; min-width: 60px; }
+    .card.element { width: auto; height: 60px; }
+    .card.molecule { width: auto; min-height: 50px; }
+    button { width: 100%; margin: 4px 0; padding: 8px; }
+    .controls { flex-direction: column; }
+    .prompt, .log { font-size: 0.8em; }
+  }
     .hp-section { flex-direction: column; }
     .hp-label, .hp-text { margin: 2px 0; }
     .hp-bar { flex: none !important; width: 100% !important; margin: 4px 0; }
@@ -73,7 +87,7 @@
     const MAX_HP = 128;
     const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"];
     const ALKALI = ["Li","Na","K"]; // 1A族
-    const WEIGHTS = {H:12,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5};
+    const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5};
     const drawPool = [];
     ELEMENTS.forEach(e => {
       const w = WEIGHTS[e]||3;
@@ -302,7 +316,7 @@
         }
           </div>
         )}</div></div>
-        <div className="log">{log.slice(0,7).map((l,i)=>
+        <div className="log">{log.slice(0,5).map((l,i)=>
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
         <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
