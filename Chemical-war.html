@@ -82,7 +82,7 @@
 { name: "乙炔", formula:{C:2,H:2}, effect:"burn" },
 { name: "乙烯", formula:{C:2,H:4}, effect:"burn" },
 { name: "二氧化碳", formula: { C: 1, O: 2 }, effect: "none" },
-{ name: "水", formula:{H:2,O:1}, effect:"none" },
+{ name: "水", formula:{H:2,O:1}, effect:"recover" },
 { name: "甲烷", formula:{C:1,H:4}, effect:"burn" },
 { name: "光氣", formula:{C:1,O:1,Cl:2}, effect:"poison" },
 { name: "氟化鈉", formula: { Na: 1, F: 1 }, effect: "none" },
@@ -156,6 +156,22 @@
     }
     function showToast(msg){const t=document.getElementById('toast');t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000);}
     function App(){
+      // 回復配置：分子即時與每回合回血
+      const RECOVER_CONFIG = {
+        '水': { immediate: 7, perTurn: 1 },
+        // 如需其他分子回血，可在此新增
+      };
+      // 通用回血觸發函式
+      const triggerRecovery = (target, molName, trigger) => {
+        const cfg = RECOVER_CONFIG[molName];
+        if (!cfg || !cfg[trigger]) return;
+        const heal = cfg[trigger];
+        const setter = target === 'player' ? setP : setA;
+        setter(hp => Math.min(MAX_HP, hp + heal));
+        addLog(`${molName}${trigger==='immediate'? ' 合成回復':' 每回合回復'} ${heal} HP`);
+      };
+
+      // 其餘狀態鉤子與函式...
       const [turn,setTurn]=React.useState('player');
       const [pHP,setP]=React.useState(MAX_HP);
       const [aHP,setA]=React.useState(MAX_HP);
@@ -174,7 +190,27 @@
       React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} if(turn==='player'){setPH(h=>[...h,drawCard(),drawCard()]);addLog('玩家抽2張');}else{setAH(h=>[...h,drawCard(),drawCard()]);addLog('AI抽2張');}},[turn,gameOver]);
       React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
       const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
-      const handleCombine=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<2){showToast('請至少選2張');return;}const cards=selEls.map(i=>pHand[i]);if(cards.some(c=>c.corroded)){showToast('腐蝕卡無法合成');return;}const m=findMol(cards);if(!m){showToast('無法合成');return;}setPF(f=>[m,...f]);setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`合成 ${m.name}`);const dmg=selEls.reduce((s,i)=>s+(ELEMENTS.indexOf(pHand[i].el)+1),0);applyDamage('ai',dmg);setSelEls([]);};  
+      const handleCombine = () => {
+        if (turn !== 'player' || gameOver) return;
+        if (selEls.length < 2) { showToast('請至少選2張'); return; }
+        const cards = selEls.map(i => pHand[i]);
+        if (cards.some(c => c.corroded)) { showToast('腐蝕卡無法合成'); return; }
+        const m = findMol(cards);
+        if (!m) { showToast('無法合成'); return; }
+        // 合成分子
+        setPF(f => [m, ...f]);
+        setPH(h => h.filter((_, i) => !selEls.includes(i)));
+        addLog(`合成 ${m.name}`);
+        // 傷害計算
+        const dmg = selEls.reduce((s, i) => s + (ELEMENTS.indexOf(pHand[i].el) + 1), 0);
+        applyDamage('ai', dmg);
+        // 合成水時立即回血
+        if (m.name === '水') {
+          triggerRecovery('player', '水', 'immediate');
+          showToast(`合成水，回復 ${RECOVER_CONFIG['水'].immediate} HP`);
+        }
+        setSelEls([]);
+      };  
       const handleDiscard=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<1){showToast('請選擇要棄牌');return;}if(selEls.length>3){showToast('最多棄牌三張');return;}const names=selEls.map(i=>pHand[i].el).join(',');setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`棄牌: ${names}`);setSelEls([]);handleEnd();};  
       const handleEnd=()=>{if(gameOver)return;setSelEls([]);setSelMol(null);setTurn(t=>t==='player'?'ai':'player');addLog('結束回合');};  
       const handleSelectEl=i=>{if(gameOver||turn!=='player')return;setSelMol(null);setSelEls(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i]);};  
@@ -281,3 +317,4 @@
   </script>
 </body>
 </html>
+
