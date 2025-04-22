@@ -1,5 +1,5 @@
 
-export const MOLECULES = [
+window.const MOLECULES = [
   // 以下為原始資料保留項目
   { n: "水", f: { H: 2, O: 1 }, effect: "無法使用", acidity: "" },
   { n: "鹽酸", f: { H: 1, Cl: 1 }, effect: "腐蝕", acidity: "強酸" },
