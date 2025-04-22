@@ -74,9 +74,16 @@
     button { width: 100%; margin: 4px 0; padding: 8px; }
     .controls { flex-direction: column; }
     .prompt, .log { font-size: 0.8em; }
+    .bg-logo {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto 1em;
+}
   }
   </style>
-</head>
+      </head>
 <body>
   <div id="toast" class="toast"></div>
   <div id="root"></div>
@@ -301,8 +308,11 @@
       };  
       React.useEffect(()=>{if(gameOver||turn!=='ai')return;setTimeout(()=>{let hand=[...aHand];let field=[...aField];const sumAtoms=f=>Object.entries(f).reduce((s,[el,n])=>s+(ELEMENTS.indexOf(el)+1)*n,0);const tryAction=()=>{const possible=MOLECULES.filter(m=>{const cnt={};hand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n);});if(possible.length>0){if(Math.random()<0.3){addLog('AI 選擇結束回合');return;}possible.sort((a,b)=>sumAtoms(b.formula)-sumAtoms(a.formula));const m=possible[0];const used=[];Object.entries(m.formula).forEach(([el,n])=>{for(let i=hand.length-1;i>=0&&n>0;i--)if(hand[i].el===el){used.push(el);hand.splice(i,1);n--;}});setAF(f=>[m,...f]);addLog(`AI 合成 ${m.name}`);const dmg=used.reduce((s,el)=>s+(ELEMENTS.indexOf(el)+1),0);applyDamage('player',dmg);addLog(`玩家受 ${dmg} 傷`);tryAction();}else{if(Math.random()<0.5){addLog('AI 選擇結束回合');}else{let toDiscard=hand.length>8?3:hand.length>5?2:1;const idxs=[];while(idxs.length<toDiscard&&hand.length>0){const i=Math.floor(Math.random()*hand.length);if(!idxs.includes(i))idxs.push(i);}const names=idxs.map(i=>hand[i].el).join(',');idxs.sort((a,b)=>b-a).forEach(i=>hand.splice(i,1));setAH([...hand]);addLog(`AI 棄牌: ${names}`);} } };tryAction();handleEnd();},2000);},[turn,gameOver]);  
       const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);  
+ 
       return(<div className="game-container"><div className="board">
-        <h1>真實煉金：化合之戰</h1>
+        <img src="https://wen91027.github.io/img/background_logo.jpeg" alt="遊戲首圖" className="bg-logo" />
+
+
         {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
