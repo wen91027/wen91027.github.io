@@ -194,7 +194,14 @@
       const addLog=msg=>setLog(l=>[msg,...l]);
       const resetGame=()=>{setP(MAX_HP);setA(MAX_HP);setPH(Array.from({length:5},drawCard));setAH(Array.from({length:5},drawCard));setPF([]);setAF([]);setSelEls([]);setSelMol(null);setLog([]);setGameOver(null);setTurn('player');firstDraw.current=true;addLog('遊戲重置，玩家先手');};
       React.useEffect(()=>resetGame(),[]);
-      React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} if(turn==='player'){setPH(h=>[...h,drawCard(),drawCard()]);addLog('玩家抽2張');}else{setAH(h=>[...h,drawCard(),drawCard()]);addLog('AI抽2張');}},[turn,gameOver]);
+      React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} if(turn==='player'){setPH(h=>[...h,drawCard(),drawCard()]);addLog('玩家抽2張');
+          // 水分子每回合回復
+          const waterCount = pField.filter(m => m.name==='水').length;
+          if(waterCount>0){
+            const heal = waterCount * RECOVER_CONFIG['水'].perTurn;
+            setP(h=>Math.min(MAX_HP, h + heal));
+            addLog(`每回合回復 ${heal} HP`);
+          }}else{setAH(h=>[...h,drawCard(),drawCard()]);addLog('AI抽2張');}},[turn,gameOver]);
       React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
       const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
       const handleCombine = () => {
