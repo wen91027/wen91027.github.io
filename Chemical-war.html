@@ -27,6 +27,7 @@
     .card.element .symbol { font-size:1.2em; margin-top:4px; }
     .card.element .number { position:absolute; top:4px; right:6px; font-size:0.8em; color:#0ff; }
     .card.element .defense { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
+    .card.element .explode { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#ff0; text-align:center; }
     .card.element.selected { border-color:#0f0; box-shadow:0 0 6px #0f0; }
     .card.molecule { width:80px; min-height:60px; background:#14232e; cursor:pointer; position:relative; }
     .card.molecule.inert { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
@@ -249,7 +250,7 @@
         <div className="log">{log.slice(0,7).map((l,i)=>
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
-                <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
+        <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
           <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>handleSelectMol(i)}>
             {c.usable
               ? React.createElement(React.Fragment, null,
@@ -260,7 +261,8 @@
             }
           </div>
         )}</div></div>
-          <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
+             <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
+
         <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
           <div key={i}
                className={`card element ${c.usable?'inert':''}${ALKALI.includes(c.el)?' alkali':''}${selEls.includes(i)?' selected':''}`}
@@ -273,8 +275,7 @@
         )}</div></div>
         <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
         <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||selEls.length<2}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||selEls.length<1}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
-      
-      </div></div>);
+         </div></div>);
     }
     ReactDOM.render(<App/>,document.getElementById('root'));
   </script>
