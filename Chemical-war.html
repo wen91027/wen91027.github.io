@@ -66,10 +66,10 @@
     const MAX_HP = 128;
     const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"];
     const ALKALI = ["Li","Na","K"]; // 1A族
-    const WEIGHTS = {H:6,C:4,O:4,N:3,Na:3,He:0.5,Ne:0.5,Ar:0.5};
+    const WEIGHTS = {H:12,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5};
     const drawPool = [];
     ELEMENTS.forEach(e => {
-      const w = WEIGHTS[e]||1;
+      const w = WEIGHTS[e]||3;
       for (let i=0;i<Math.round(w*2);i++) drawPool.push(e);
     });
     function drawCard(){
