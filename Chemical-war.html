@@ -34,12 +34,12 @@
     .card.molecule.corrosion { background:#661100; }
     .card.molecule.poison    { background:#440066; }
     .card.molecule.burn      { background:#663300; }
-    .card.molecule.recover   { background:#ADD8E6; }
+    .card.molecule.recover   { background:#00AEAE; }
     .card.molecule.inert     { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
     .card.molecule.inert .symbol    { font-size:1em; margin:4px 0; }
     .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
     .card.molecule.recover .symbol     { font-size:1em; margin-top:8px; }
-    .card.molecule.recover .recover-info { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#8cf; text-align:center; }
+    .card.molecule.recover .recover-info { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
     .controls { margin:8px 0; }
     button { font-family:'Orbitron',sans-serif; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s; }
@@ -295,6 +295,11 @@
           <div key={i} className={`card molecule ${c.effect} ${c.usable?'inert':''}`}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
+             {c.effect === 'recover' &&
+          <div className="recover-info">
+            持續回復{RECOVER_CONFIG['水'].perTurn}HP
+          </div>
+        }
           </div>
         )}</div></div>
         <div className="log">{log.slice(0,7).map((l,i)=>
@@ -309,6 +314,12 @@
                 )
               : React.createElement("div", { className: "name" }, c.name)
             }
+                    {c.effect === 'recover' &&
+          <div className="recover-info">
+            持續回復{RECOVER_CONFIG['水'].perTurn}HP
+          </div>
+        }
+            
           </div>
         )}</div></div>
              <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
