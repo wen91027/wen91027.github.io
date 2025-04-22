@@ -23,23 +23,30 @@
     .card:hover { transform:translateY(-4px); }
     .card.element { width:50px; height:70px; background:#1f2a36; cursor:pointer; position:relative; }
     .card.element.inert { background:#555; }
-    .card.element.alkali { background:#a00; } /* 1A族紅色背景 */
+    .card.element.alkali { background:#a00; }
     .card.element .symbol { font-size:1.2em; margin-top:4px; }
     .card.element .number { position:absolute; top:4px; right:6px; font-size:0.8em; color:#0ff; }
     .card.element .defense { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
     .card.element .explode { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#ff0; text-align:center; }
     .card.element.selected { border-color:#0f0; box-shadow:0 0 6px #0f0; }
     .card.molecule { width:80px; min-height:60px; background:#14232e; cursor:pointer; position:relative; }
-    .card.molecule.inert { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
-    .card.molecule.inert .symbol { font-size:1em; margin:4px 0; }
+    /* effect-specific backgrounds */
+    .card.molecule.corrosion { background:#661100; }
+    .card.molecule.poison    { background:#440066; }
+    .card.molecule.burn      { background:#663300; }
+    .card.molecule.recover   { background:#ADD8E6; }
+    .card.molecule.inert     { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    .card.molecule.inert .symbol    { font-size:1em; margin:4px 0; }
     .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
+    .card.molecule.recover .symbol     { font-size:1em; margin-top:8px; }
+    .card.molecule.recover .recover-info { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#8cf; text-align:center; }
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
     .controls { margin:8px 0; }
     button { font-family:'Orbitron',sans-serif; background:#112233; color:#0ff; border:1px solid #0ff; border-radius:4px; padding:6px 12px; margin:0 4px; cursor:pointer; transition:background 0.2s; }
     button:hover:enabled { background:#334455; }
     button:disabled { opacity:0.5; cursor:not-allowed; }
     .prompt { color:#8cf; margin-top:4px; }
-    .log { text-align:center; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:1em; } /* 日誌字體較大 */
+    .log { text-align:center; max-height:120px; overflow-y:auto; background:#112233; padding:8px; border:1px solid #333; border-radius:4px; margin-top:8px; font-size:1em; }
     @media (orientation: portrait) {
     .board { width:100%; padding:0.5em; }
     .hp-section { flex-direction: column; }
@@ -278,7 +285,7 @@
         {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
-          <div key={i} className={`card molecule ${c.usable?'inert':''}`}>
+          <div key={i} className={`card molecule ${c.effect} ${c.usable?'inert':''}`}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
           </div>
@@ -287,7 +294,7 @@
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
         <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
-          <div key={i} className={`card molecule ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>handleSelectMol(i)}>
+          <div key={i} className={`card molecule ${c.effect} ${c.usable?'inert':''}${selMol===i?' selected':''}`} onClick={()=>handleSelectMol(i)}>
             {c.usable
               ? React.createElement(React.Fragment, null,
                   React.createElement("div", { className: "symbol" }, c.el),
@@ -317,4 +324,3 @@
   </script>
 </body>
 </html>
-
