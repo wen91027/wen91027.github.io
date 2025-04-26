@@ -314,6 +314,20 @@
 
 
         {gameOver&&<div className="overlay"><h2>{gameOver==='win'?'你贏了':'化學不會就是不會'}</h2><button onClick={resetGame}>重新開始</button></div>}
+        <div className="zone">
+  <div className="zone-title">對手手牌</div>
+  <div className="hand">
+    {aHand.map((c, i) => (
+      <div key={i}
+           className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}`}>
+        <div className="symbol">{c.el}</div>
+        <div className="number">{ELEMENTS.indexOf(c.el) + 1}</div>
+        {c.usable && <div className="defense">防禦傷害</div>}
+        {ALKALI.includes(c.el) && <div className="explode">引爆水</div>}
+      </div>
+    ))}
+  </div>
+</div>
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
           <div key={i} className={`card molecule ${c.effect} ${c.usable?'inert':''}`}>
