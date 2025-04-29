@@ -31,7 +31,7 @@
     .card.element .explode { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#ff0; text-align:center; }
     .card.element.selected { border-color:#0f0; box-shadow:0 0 6px #0f0; }
     .card.element.corroded { background: linear-gradient(45deg, #555 25%, #333 25%, #333 50%, #555 50%, #555 75%, #333 75%, #333 100%); background-size: 6px 6px;position: relative;}
-    .card.element.corroded::after {content: "腐蝕中";position: absolute;bottom: 2px;left: 50%;transform: translateX(-50%);font-size: 0.4em;color: #ff6688;font-weight: bold;}
+    .card.element.corroded::after {content: "腐蝕";position: absolute;bottom: 2px;left: 50%;transform: translateX(-50%);font-size: 0.4em;color: #ff6688;font-weight: bold;}
     
     .card.molecule { width:80px; min-height:60px; background:#14232e; cursor:pointer; position:relative; }
     /* effect-specific backgrounds */
@@ -96,8 +96,64 @@
   display: block;
   margin: 0 auto 1em;
 }
+
+   /* 動畫效果新增在這 */
+
+    /* AI思考遮罩 */
+.ai-text {font-size: 1.5em;color: #0ff;animation: pulse 1s infinite;text-shadow: 0 0 10px #0ff;}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 牌從上往下飛並淡入 */
+    
+@keyframes slide-down {
+  0% {transform: translateY(-100px);opacity: 0;}
+  100% {transform: translateY(0);opacity: 1;}
+}
+/* 剛合成的牌 */
+.card.molecule.newly-created { animation: slide-down 0.6s ease-out;}
+/* 新的飛入動畫 */
+@keyframes fly-in {
+  0% {
+    transform: translateY(-80px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+ /* 合成動畫：分子 */
+.card.molecule.just-combined {
+  animation: fly-in 0.5s ease-out;
+  z-index: 10;
+}
+
+/* 抽卡動畫：元素 */
+.card.element.just-drawn {
+  animation: fly-in 0.5s ease-out;
+  z-index: 10;
+}
+/* 合成動畫：元素 */
+    .card.element.combine-out {
+  animation: combine-out 0.5s ease-in-out forwards;
+}
+
+@keyframes combine-out {
+  0%   { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.2) translateY(-40px); opacity: 0; }
+}
+
+
+    
   }
   </style>
+  
       </head>
 <body>
   <div id="toast" class="toast"></div>
@@ -197,6 +253,8 @@
       }
       return null;
     }
+
+    
 //腐蝕相關函式
 function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 預設
   const metals = METALS;
@@ -221,7 +279,53 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
 }
     
     function showToast(msg){const t=document.getElementById('toast');t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000);}
+    
+  
+
+    //APP 主要遊戲段落-----------------------------------------------
     function App(){
+
+        // 其餘狀態鉤子與函式...
+      const [turn,setTurn]=React.useState('player');
+      const [pHP,setP]=React.useState(MAX_HP);
+      const [aHP,setA]=React.useState(MAX_HP);
+      const [pHand,setPH]=React.useState([]);
+      const [aHand,setAH]=React.useState([]);
+      const [pField,setPF]=React.useState([]);
+      const [aField,setAF]=React.useState([]);
+      const [selEls,setSelEls]=React.useState([]);
+      const [selMol,setSelMol]=React.useState(null);
+      const [log,setLog]=React.useState([]);
+      const [gameOver,setGameOver]=React.useState(null);
+      const firstDraw=React.useRef(true);
+      const [aiThinking, setAiThinking] = React.useState(false);
+      const addLog=msg=>setLog(l=>[msg,...l]);
+      const resetGame=()=>{setP(MAX_HP);setA(MAX_HP);setPH(Array.from({length:5},drawCard));setAH(Array.from({length:5},drawCard));setPF([]);setAF([]);setSelEls([]);setSelMol(null);setLog([]);setGameOver(null);setTurn('player');firstDraw.current=true;addLog('遊戲重置，玩家先手');};
+      const [justCombinedId, setJustCombinedId] = React.useState(null);
+      const [justDrawnIndices, setJustDrawnIndices] = React.useState([]);
+      const [justUsedIndices, setJustUsedIndices] = React.useState([]);
+
+
+      
+      //抽牌通用
+function drawCardsTo(currentHand, setHand, count = 2, label = '玩家') {
+  const newCards = Array.from({ length: count }, drawCard);
+  const updatedHand = [...currentHand, ...newCards];
+  setHand(updatedHand);
+  addLog(`${label}抽${count}張`);
+  
+if (label === '玩家' || label === 'AI') {
+const startIndex = currentHand.length;
+const indices = newCards.map((_, i) => startIndex + i);
+setJustDrawnIndices(indices);   // 共用動畫 index
+setTimeout(() => setJustDrawnIndices([]), 800);
+}
+
+
+  return updatedHand;
+}
+
+      
       // 回復配置：分子即時與每回合回血
       const RECOVER_CONFIG = {
         '水': { immediate: 7, perTurn: 1 },
@@ -236,52 +340,141 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
         setter(hp => Math.min(MAX_HP, hp + heal));
         addLog(`${molName}${trigger==='immediate'? ' 合成回復':' 每回合回復'} ${heal} HP`);
       };
+      
+      //aiTakeAction() AI動作
+  async function aiTakeAction() {
+    setAiThinking(true);  // 開始顯示遮罩
+    await new Promise(resolve => setTimeout(resolve, 600)); // 👈 關鍵：讓 UI 有機會重繪
+  let hand = [...aHand];
+  let field = [...aField];
+  const sumAtoms = f => Object.entries(f).reduce((s, [el, n]) => s + (ELEMENTS.indexOf(el) + 1) * n, 0);
 
-      // 其餘狀態鉤子與函式...
-      const [turn,setTurn]=React.useState('player');
-      const [pHP,setP]=React.useState(MAX_HP);
-      const [aHP,setA]=React.useState(MAX_HP);
-      const [pHand,setPH]=React.useState([]);
-      const [aHand,setAH]=React.useState([]);
-      const [pField,setPF]=React.useState([]);
-      const [aField,setAF]=React.useState([]);
-      const [selEls,setSelEls]=React.useState([]);
-      const [selMol,setSelMol]=React.useState(null);
-      const [log,setLog]=React.useState([]);
-      const [gameOver,setGameOver]=React.useState(null);
-      const firstDraw=React.useRef(true);
-      const addLog=msg=>setLog(l=>[msg,...l]);
-      const resetGame=()=>{setP(MAX_HP);setA(MAX_HP);setPH(Array.from({length:5},drawCard));setAH(Array.from({length:5},drawCard));setPF([]);setAF([]);setSelEls([]);setSelMol(null);setLog([]);setGameOver(null);setTurn('player');firstDraw.current=true;addLog('遊戲重置，玩家先手');};
-      React.useEffect(()=>resetGame(),[]);
+  const possible = MOLECULES.filter(m => {
+    const cnt = {};
+    hand.forEach(c => cnt[c.el] = (cnt[c.el] || 0) + 1);
+    return Object.entries(m.formula || {}).every(([el, n]) => cnt[el] >= n);
+  });
+
+  if (possible.length > 0 && Math.random() >= 0.3) {
+    possible.sort((a, b) => sumAtoms(b.formula) - sumAtoms(a.formula));
+    const m = possible[0];
+    const used = [];
+
+    Object.entries(m.formula).forEach(([el, n]) => {
+      for (let i = hand.length - 1; i >= 0 && n > 0; i--) {
+        if (hand[i].el === el) {
+          used.push(el);
+          hand.splice(i, 1);
+          n--;
+        }
+      }
+    });
+
+    setAH([...hand]); // 🔥 手牌同步
+    setAF(f => [m, ...f]); // 分子區同步
+    addLog(`AI 合成 ${m.name}`);
+
+    if ((m.kind || '').includes('acid')) {
+      const corroded = corrodeMetals(pHand, setPH);
+      if (corroded > 0) addLog(`敵方酸性分子腐蝕了你 ${corroded} 張金屬卡`);
+    }
+
+    const dmg = used.reduce((s, el) => s + (ELEMENTS.indexOf(el) + 1), 0);
+    applyDamage('player', dmg);
+    addLog(`你受到 ${dmg} 傷`);
+
+    let continueAction = true;
+while (continueAction) {
+  await new Promise(resolve => setTimeout(resolve, 600)); // 延遲 0.6 秒
+
+  const currentHand = [...hand]; // 最新手牌
+  const cnt = {};
+  currentHand.forEach(c => cnt[c.el] = (cnt[c.el] || 0) + 1);
+
+  const possible = MOLECULES.filter(m =>
+    Object.entries(m.formula || {}).every(([el, n]) => cnt[el] >= n)
+  );
+
+  if (possible.length > 0 && Math.random() > 0.5) { // 機率決定是否連續出手
+    possible.sort((a, b) => sumAtoms(b.formula) - sumAtoms(a.formula));
+    const m = possible[0];
+
+    const used = [];
+    Object.entries(m.formula).forEach(([el, n]) => {
+      for (let i = hand.length - 1; i >= 0 && n > 0; i--) {
+        if (hand[i].el === el) {
+          used.push(el);
+          hand.splice(i, 1);
+          n--;
+        }
+      }
+    });
+
+    setAH([...hand]);
+    setAF(f => [m, ...f]);
+    addLog(`AI 合成 ${m.name}`);
+
+    if ((m.kind || '').includes('acid')) {
+      const corroded = corrodeMetals(pHand, setPH);
+      if (corroded > 0) addLog(`敵方酸性分子腐蝕了你 ${corroded} 張金屬卡`);
+    }
+
+    const dmg = used.reduce((s, el) => s + (ELEMENTS.indexOf(el) + 1), 0);
+    applyDamage('player', dmg);
+    addLog(`你受到 ${dmg} 傷`);
+  } else {
+    continueAction = false;
+  }
+}
+
+handleEnd();
+  } else {
+    if (Math.random() < 0.5) {
+      addLog('AI 選擇結束回合');
+    } else {
+      let toDiscard = hand.length > 8 ? 3 : hand.length > 5 ? 2 : 1;
+      const idxs = [];
+      while (idxs.length < toDiscard && hand.length > 0) {
+        const i = Math.floor(Math.random() * hand.length);
+        if (!idxs.includes(i)) idxs.push(i);
+      }
+      const names = idxs.map(i => hand[i].el).join(',');
+      idxs.sort((a, b) => b - a).forEach(i => hand.splice(i, 1));
+      setAH([...hand]);
+      addLog(`AI 棄牌: ${names}`);
+    }
+
+    handleEnd(); // 確實結束回合
+  }
+    setAiThinking(false); // 動作結束後關掉遮罩
+}
+
+          React.useEffect(()=>resetGame(),[]);
       React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} 
         if (turn === 'player') {
-  setPH(h => {
-    const newHand = [...h, drawCard(), drawCard()];
-    addLog('玩家抽2張');
+const newHand = drawCardsTo(pHand, setPH, 2, '玩家');
 
-    const acidCount = aField.filter(m => (m.kind || '').includes('acid')).length;
-    const strongAcidCount = aField.filter(m => (m.kind || '').includes('strong_acid')).length;
+const acidCount = aField.filter(m => (m.kind || '').includes('acid')).length;
+const strongAcidCount = aField.filter(m => (m.kind || '').includes('strong_acid')).length;
 
-    if (acidCount === 0) {
-      clearCorrosion(newHand, setPH);
-    }
+if (acidCount === 0) clearCorrosion(newHand, setPH);
+if (strongAcidCount > 0) {
+  const corroded = corrodeMetals(newHand, setPH, 1);
+  if (corroded > 0) addLog(`敵方強酸腐蝕了你 ${corroded} 張金屬卡`);
+}
 
-    if (strongAcidCount > 0) {
-      const corroded = corrodeMetals(newHand, setPH, 1);
-      if (corroded > 0) addLog(`敵方強酸腐蝕了你 ${corroded} 張金屬卡`);
-    }
-
-    return newHand;
-  });
           // 水分子每回合回復
           const waterCount = pField.filter(m => m.name==='水').length;
           if(waterCount>0){
             const heal = waterCount * RECOVER_CONFIG['水'].perTurn;
             setP(h=>Math.min(MAX_HP, h + heal));
             addLog(`每回合回復 ${heal} HP`);
-          }}else{setAH(h=>[...h,drawCard(),drawCard()]);addLog('AI抽2張');}},[turn,gameOver]);
+          }}
+      
+                          },[turn,gameOver]);
       React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
       const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
+      
       const handleCombine = () => {
         if (turn !== 'player' || gameOver) return;
         if (selEls.length < 2) { showToast('請至少選2張'); return; }
@@ -290,9 +483,17 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
         const m = findMol(cards);
         if (!m) { showToast('無法合成'); return; }
         // 合成分子
-        setPF(f => [m, ...f]);
+        const newMol = { ...m, id: Date.now() };  // ⭐ 加入唯一 ID
+      setPF(f => [newMol, ...f]);
+      
+        setJustUsedIndices(selEls);
+        setTimeout(() => setJustUsedIndices([]), 800); // 避免重複動畫
+        setJustCombinedId(newMol.id);             // ⭐ 設定動畫標記
+        setTimeout(() => setJustCombinedId(null), 800);
+
         setPH(h => h.filter((_, i) => !selEls.includes(i)));
         addLog(`合成 ${m.name}`);
+
 
 // 合成酸
         
@@ -373,85 +574,34 @@ if ((m.kind || '').includes('acid')) {
       React.useEffect(() => {
   if (gameOver || turn !== 'ai') return;
 
-         const acidCount = pField.filter(m => (m.kind || '').includes('acid')).length;
+  const newHand = drawCardsTo(aHand, setAH, 2, 'AI');
+
+  const acidCount = pField.filter(m => (m.kind || '').includes('acid')).length;
   const strongAcidCount = pField.filter(m => (m.kind || '').includes('strong_acid')).length;
 
-  if (acidCount === 0) {
-    clearCorrosion(aHand, setAH);
-  }
+  if (acidCount === 0) clearCorrosion(newHand, setAH);
   if (strongAcidCount > 0) {
-    const corroded = corrodeMetals(aHand, setAH, 1);
-    if (corroded > 0) addLog(`強酸腐蝕了 ${corroded} 張金屬卡`);
+    const corroded = corrodeMetals(newHand, setAH, 1);
+    if (corroded > 0) addLog(`你方強酸腐蝕了敵方 ${corroded} 張金屬卡`);
   }
-        
-  setTimeout(() => {
-    let hand = [...aHand];
-    let field = [...aField];
-    hand.push(drawCard(), drawCard());
-setAH([...hand]);
-addLog('AI抽2張');
-    const sumAtoms = f => Object.entries(f).reduce((s, [el, n]) => s + (ELEMENTS.indexOf(el) + 1) * n, 0);
-    const tryAction = () => {
-      const possible = MOLECULES.filter(m => {
-        const cnt = {};
-        hand.forEach(c => cnt[c.el] = (cnt[c.el] || 0) + 1);
-        return Object.entries(m.formula || {}).every(([el, n]) => cnt[el] >= n);
-      });
-      if (possible.length > 0) {
-        if (Math.random() < 0.3) {
-          addLog('AI 選擇結束回合');
-          return;
-        }
-        possible.sort((a, b) => sumAtoms(b.formula) - sumAtoms(a.formula));
-        const m = possible[0];
-        const used = [];
-        Object.entries(m.formula).forEach(([el, n]) => {
-          for (let i = hand.length - 1; i >= 0 && n > 0; i--) {
-            if (hand[i].el === el) {
-              used.push(el);
-              hand.splice(i, 1);
-              n--;
-            }
-          }
-        });
-        setAF(f => [m, ...f]);
-        if ((m.kind || '').includes('acid')) {
-          const corroded = corrodeMetals(pHand, setPH);
-          if (corroded > 0) addLog(`敵方酸性分子腐蝕了你 ${corroded} 張金屬卡`);
-        }
-        addLog(`AI 合成 ${m.name}`);
-        const dmg = used.reduce((s, el) => s + (ELEMENTS.indexOf(el) + 1), 0);
-        applyDamage('player', dmg);
-        addLog(`玩家受 ${dmg} 傷`);
-        tryAction();
-      } else {
-        if (Math.random() < 0.5) {
-          addLog('AI 選擇結束回合');
-        } else {
-          let toDiscard = hand.length > 8 ? 3 : hand.length > 5 ? 2 : 1;
-          const idxs = [];
-          while (idxs.length < toDiscard && hand.length > 0) {
-            const i = Math.floor(Math.random() * hand.length);
-            if (!idxs.includes(i)) idxs.push(i);
-          }
-          const names = idxs.map(i => hand[i].el).join(',');
-          idxs.sort((a, b) => b - a).forEach(i => hand.splice(i, 1));
-          setAH([...hand]);
-          addLog(`AI 棄牌: ${names}`);
-        }
-      }
-    };
-    tryAction();
-    handleEnd();
-  }, 2000);
+
+  // 延遲執行行動（給 React 更新時間）
+  setTimeout(() => aiTakeAction(), 600);
 }, [turn, gameOver]);
+
+
 
       const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);  
 
 
-      //ui區域
+      //ui區域-----------------------------------------------
       return(<div className="game-container"><div className="board">
         <h1>真實煉金：化合之戰</h1>
+        {aiThinking && (
+  <div className="overlay">
+    <div className="ai-text">AI 的回合...</div>
+  </div>
+)}
         <img src="https://wen91027.github.io/img/BN_top.jpeg" alt="遊戲首圖" className="bg-logo" />
 
 
@@ -460,9 +610,9 @@ addLog('AI抽2張');
   <div className="zone-title">對手手牌</div>
   <div className="hand enemy-hand">
 {aHand.map((c, i) => (
-  <div key={i}
-       className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}`}>
-        <div className="symbol">{c.el}</div>
+ <div key={i}
+  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${justDrawnIndices.includes(i) ? ' just-drawn' : ''}`}>
+       <div className="symbol">{c.el}</div>
         <div className="number">{ELEMENTS.indexOf(c.el) + 1}</div>
         {c.usable && <div className="defense">防禦傷害</div>}
         {ALKALI.includes(c.el) && <div className="explode">引爆水</div>}
@@ -472,7 +622,8 @@ addLog('AI抽2張');
 </div>
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
-         <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}`}>
+        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''} ${justCombinedId === c.id ? 'newly-created' : ''}
+`}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
              {c.effect === 'recover' &&
@@ -489,7 +640,9 @@ addLog('AI抽2張');
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
         <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
-          <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''}`} onClick={() => handleSelectMol(i)}>            {c.usable
+          <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''} ${justCombinedId === c.id ? 'newly-created' : ''}
+`} onClick={() => handleSelectMol(i)}>           
+            {c.usable
               ? React.createElement(React.Fragment, null,
                   React.createElement("div", { className: "symbol" }, c.el),
                   React.createElement("div", { className: "block-info" }, `阻擋${ELEMENTS.indexOf(c.el)+1}傷害`)
@@ -510,9 +663,9 @@ addLog('AI抽2張');
              <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
 
         <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
-    <div key={i}
-       className={`card element ${c.usable?'inert':''}${ALKALI.includes(c.el)?' alkali':''}${c.corroded ? ' corroded' : ''}${selEls.includes(i)?' selected':''}`}
-       onClick={()=>handleSelectEl(i)}>
+ <div key={i}
+  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${justDrawnIndices.includes(i) ? ' just-drawn' : ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}`}
+  onClick={() => handleSelectEl(i)}>
             <div className="symbol">{c.el}</div>
             <div className="number">{ELEMENTS.indexOf(c.el)+1}</div>
             {c.usable&&<div className="defense">防禦傷害</div>}
