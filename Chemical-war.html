@@ -25,13 +25,18 @@
     .card.element { width:50px; height:70px; background:#1f2a36; cursor:pointer; position:relative; }
     .card.element.inert { background:#555; }
     .card.element.alkali { background:#a00; }
-    .card.element .symbol { font-size:1.2em; margin-top:4px; }
+    .card.element .symbol {  font-size: 1.2em;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1; /* 讓它撐滿父元素高度，便於置中 */}
     .card.element .number { position:absolute; top:4px; right:6px; font-size:0.8em; color:#0ff; }
     .card.element .defense { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
     .card.element .explode { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#ff0; text-align:center; }
     .card.element.selected { border-color:#0f0; box-shadow:0 0 6px #0f0; }
     .card.element.corroded { background: linear-gradient(45deg, #555 25%, #333 25%, #333 50%, #555 50%, #555 75%, #333 75%, #333 100%); background-size: 6px 6px;position: relative;}
-    .card.element.corroded::after {content: "腐蝕";position: absolute;bottom: 2px;left: 50%;transform: translateX(-50%);font-size: 0.4em;color: #ff6688;font-weight: bold;}
+    .card.element.corroded::after {content: "腐蝕";position: absolute;top: 2px;left: 50%;transform: translateX(-50%);font-size: 0.4em;color: #ff6688;}
     
     .card.molecule { width:80px; min-height:60px; background:#14232e; cursor:pointer; position:relative; }
     /* effect-specific backgrounds */
@@ -149,7 +154,37 @@
   100% { transform: scale(0.2) translateY(-40px); opacity: 0; }
 }
 
+/* 合成動畫：特效光 */
+    
+.card.molecule.flash {
+  position: relative;
+}
 
+.card.molecule.flash::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  animation: flash-glow 0.8s ease-out;
+  pointer-events: none;
+  z-index: 999;
+}
+
+@keyframes flash-glow {
+  0% { box-shadow: 0 0 0px #fff; transform: scale(1); }
+  50% { box-shadow: 0 0 20px #fff; transform: scale(1.05); }
+  100% { box-shadow: 0 0 0px #fff; transform: scale(1); }
+  z-index: 999;
+}
+
+    .card.molecule.newly-created {
+  animation: flash-glow 0.6s ease-out;
+      z-index: 999;
+}
     
   }
   </style>
@@ -474,7 +509,8 @@ if (strongAcidCount > 0) {
                           },[turn,gameOver]);
       React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
       const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
-      
+
+        //合成分子常用方法  handleCombine ----
       const handleCombine = () => {
         if (turn !== 'player' || gameOver) return;
         if (selEls.length < 2) { showToast('請至少選2張'); return; }
@@ -486,12 +522,15 @@ if (strongAcidCount > 0) {
         const newMol = { ...m, id: Date.now() };  // ⭐ 加入唯一 ID
       setPF(f => [newMol, ...f]);
       
-        setJustUsedIndices(selEls);
-        setTimeout(() => setJustUsedIndices([]), 800); // 避免重複動畫
-        setJustCombinedId(newMol.id);             // ⭐ 設定動畫標記
-        setTimeout(() => setJustCombinedId(null), 800);
+   setJustUsedIndices(selEls);             // 記錄動畫開始
+setJustCombinedId(newMol.id);          // 合成動畫標記
 
-        setPH(h => h.filter((_, i) => !selEls.includes(i)));
+setTimeout(() => {
+  setJustUsedIndices([]);              // 清除動畫 class
+  setJustCombinedId(null);             // 清除合成標記
+  setPH(h => h.filter((_, i) => !selEls.includes(i)));  // ⭐ 延後移除
+}, 800);  // ⏱️ 動畫結束時間
+
         addLog(`合成 ${m.name}`);
 
 
@@ -599,7 +638,7 @@ if ((m.kind || '').includes('acid')) {
         <h1>真實煉金：化合之戰</h1>
         {aiThinking && (
   <div className="overlay">
-    <div className="ai-text">AI 的回合...</div>
+    <div className="ai-text">AI 思考中...</div>
   </div>
 )}
         <img src="https://wen91027.github.io/img/BN_top.jpeg" alt="遊戲首圖" className="bg-logo" />
@@ -622,7 +661,7 @@ if ((m.kind || '').includes('acid')) {
 </div>
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
-        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''} ${justCombinedId === c.id ? 'newly-created' : ''}
+        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
 `}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
@@ -640,7 +679,7 @@ if ((m.kind || '').includes('acid')) {
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
         <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
-          <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''} ${justCombinedId === c.id ? 'newly-created' : ''}
+          <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
 `} onClick={() => handleSelectMol(i)}>           
             {c.usable
               ? React.createElement(React.Fragment, null,
