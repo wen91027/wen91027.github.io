@@ -339,7 +339,19 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
       const [justCombinedId, setJustCombinedId] = React.useState(null);
       const [justDrawnIndices, setJustDrawnIndices] = React.useState([]);
       const [justUsedIndices, setJustUsedIndices] = React.useState([]);
+//酸鹼//////////////////////////////////////////////////
+// 計算玩家能否進行酸鹼中和
+const [canCombine, setCanCombine] = React.useState(false);
+      const [selEnemyMol, setSelEnemyMol] = React.useState(null);
+      
+const canNeutralize = (selectedMol, enemyMol) => {
+  return selectedMol && enemyMol && 
+    ((selectedMol.kind === 'base' && 
+    enemyMol.kind === 'acid')||(selectedMol.kind === 'acid' && 
+    enemyMol.kind === 'base'));
+};
 
+      ////////////////////////////////////////
 
       
       //抽牌通用
@@ -553,7 +565,47 @@ if ((m.kind || '').includes('acid')) {
       const handleDiscard=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<1){showToast('請選擇要棄牌');return;}if(selEls.length>3){showToast('最多棄牌三張');return;}const names=selEls.map(i=>pHand[i].el).join(',');setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`棄牌: ${names}`);setSelEls([]);handleEnd();};  
       const handleEnd=()=>{if(gameOver)return;setSelEls([]);setSelMol(null);setTurn(t=>t==='player'?'ai':'player');addLog('結束回合');};  
       const handleSelectEl=i=>{if(gameOver||turn!=='player')return;setSelMol(null);setSelEls(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i]);};  
-      const handleSelectMol=i=>{if(gameOver||turn!=='player')return;setSelEls([]);setSelMol(selMol===i?null:i);};  
+      
+        
+     const handleSelectMol = (index) => {
+  if (gameOver || turn !== 'player') return;
+
+  setSelMol(index);
+
+  // 這裡判斷是否可以合成
+  if (selMol !== null) {
+    const selectedMol = pField[selMol];
+    const enemyMol = aField[index]; // 假設索引指向敵方分子
+    if (canNeutralize(selectedMol, enemyMol)) {
+      setCanCombine(true); // 啟用合成按鈕
+    } else {
+      setCanCombine(false); // 禁用合成按鈕
+    }
+  }
+};
+     
+      // 更新選擇敵方分子的邏輯
+        const handleSelectEnemyMol = (index) => {
+           console.log("選擇敵方分子，索引:", index);
+          if (gameOver || turn !== 'player') return;
+        
+          // 設置選擇的敵方分子
+          setSelEnemyMol(index);
+        };
+        // 合成的處理
+        const handleNeutralize = (selectedMol, enemyMol) => {
+          if (!canNeutralize(selectedMol, enemyMol)) return;
+        
+          // 當中和成功，更新分子區、生命值等狀態
+          setPF((f) => [...f, { ...selectedMol, effect: 'neutralized' }]);
+          setAF((f) => f.filter((mol) => mol !== enemyMol)); // 移除被中和的敵方分子
+        
+          // 顯示成功信息
+          showToast(`中和成功！${selectedMol.name} 和 ${enemyMol.name} 合成`);
+          addLog(`成功中和 ${enemyMol.name}`);
+        };
+
+      
       const hasWater = pField.some(m => m.name === '水') || aField.some(m => m.name === '水');
       const canUse = (turn === 'player' && !gameOver) && (
         (selMol !== null && pField[selMol].effect !== 'none') ||
@@ -660,9 +712,10 @@ if ((m.kind || '').includes('acid')) {
   </div>
 </div>
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
-        <div className="zone"><div className="zone-title">對手分子區</div><div className="field">{aField.map((c,i)=>
+         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">
+           {aField.map((c,i)=>
         <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
-`}>
+`}onClick={() => handleSelectEnemyMol(i)}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
              {c.effect === 'recover' &&
@@ -699,6 +752,20 @@ if ((m.kind || '').includes('acid')) {
             
           </div>
         )}</div></div>
+
+          <div>
+      <div>
+        {/* 如果可以中和，顯示合成按鈕 */}
+        {selMol !== null && (
+          <button 
+            onClick={() => handleNeutralize(pField[selMol], aField[0])} // 與敵方第0張分子進行合成
+            disabled={!canCombine}  // 禁用按鈕直到可以合成
+          >
+            合成
+          </button>
+        )}
+      </div>
+    </div>
              <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
 
         <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
@@ -719,4 +786,5 @@ if ((m.kind || '').includes('acid')) {
   </script>
 </body>
 </html>
+
 
