@@ -40,25 +40,23 @@
     
     .card.molecule { width:80px; min-height:60px; background:#14232e; cursor:pointer; position:relative; }
     /* effect-specific backgrounds */
-    .card.molecule.corrosion { background:#661100; }
-    .card.molecule.poison    { background:#440066; }
-    .card.molecule.burn      { background:#663300; }
-    .card.molecule.recover   { background:#00AEAE; border:2px solid #fff; box-shadow:0 0 8px #fff;}
-    .card.molecule.inert     { background:#555; border:2px solid #fff; box-shadow:0 0 8px #fff; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
-    .card.molecule.inert .symbol    { font-size:1em; margin:4px 0; }
-    .card.molecule.inert .block-info { font-size:0.8em; color:#fff; }
-    .card.molecule.recover .symbol     { font-size:1em; margin-top:8px; }
+    .card.molecule.organic      { background:#663300; }
+    .card.molecule.recover   { border:2px solid #fff; box-shadow:0 0 8px #fff;}
+    .card.molecule.inert     { background:#555; border:2px solid #fff; box-shadow:0 0 8px #00FFFF; pointer-events:none; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+    .card.molecule.inert .symbol    { font-size:1em; margin-top:8px; }
+    .card.molecule.inert .block-info { font-size:0.6em; color:#fff; }
+    .card.molecule.recover .symbol     { font-size: 1em; margin-top:8px; }
     .card.molecule.recover .recover-info { position:absolute; bottom:4px; width:100%; font-size:0.6em; color:#fff; text-align:center; }
     .card.molecule.acid {  background: #BF0060;}
+    .card.molecule.base {  background: #005AB5;}
     .card.molecule.corrosion .corrosion-info {
-  position: absolute;
-  bottom: 4px;
-  width: 100%;
-  font-size: 0.6em;
-  color: #ff6688; /* 比較偏粉紅紅色 */
-  text-align: center;
-  font-weight: bold;
-}
+        position: absolute;
+        bottom: 4px;
+        width: 100%;
+        font-size: 0.6em;
+        color: #ff6688; /* 比較偏粉紅紅色 */
+        text-align: center;
+      }
     
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
     .controls { margin:8px 0; }
@@ -211,6 +209,8 @@
       const el = drawPool[Math.floor(Math.random()*drawPool.length)];
       return { el, corroded:false, usable:['He','Ne','Ar'].includes(el) };
     }
+
+    //元素合成表
     const MOLECULES = [
       { name: "一氧化氮",  formula: { N: 1, O: 1 },        kind: "none",         effect: "poison"     },
   { name: "一氧化碳",  formula: { C: 1, O: 1 },        kind: "none",         effect: "poison"     },
@@ -276,8 +276,44 @@
   { name: "磷化鉀",    formula: { K: 3, P: 1 },        kind: "salt",         effect: "none"       },
   { name: "磷化鋁",    formula: { Al: 1, P: 1 },       kind: "salt",         effect: "none"       },
   { name: "磷化鋰",    formula: { Li: 3, P: 1 },       kind: "salt",         effect: "none"       },
-  { name: "鹽酸",      formula: { H: 1, Cl: 1 },      kind: "strong_acid",  effect: "corrosion" }
+  { name: "鹽酸",      formula: { H: 1, Cl: 1 },      kind: "strong_acid",  effect: "corrosion" },
+  { name: "硝酸鈉",    formula: { Na: 1, N: 1, O: 3 }, kind: "salt", effect: "none" },
+  { name: "硫酸鈣",    formula: { Ca: 1, S: 1, O: 4 }, kind: "salt", effect: "none" },
+{ name: "氰酸鎂", formula: { Mg: 1, C: 1, N: 1, O: 1 }, kind: "salt", effect: "none" },
+    { name: "硝酸鉀", formula: { K: 1, N: 1, O: 3 }, kind: "salt", effect: "none" },
+{ name: "硝酸鋰", formula: { Li: 1, N: 1, O: 3 }, kind: "salt", effect: "none" },
+{ name: "氰酸鈉", formula: { Na: 1, C: 1, N: 1, O: 1 }, kind: "salt", effect: "none" },
+{ name: "氰酸鉀", formula: { K: 1, C: 1, N: 1, O: 1 }, kind: "salt", effect: "none" },
+{ name: "氰酸鋰", formula: { Li: 1, C: 1, N: 1, O: 1 }, kind: "salt", effect: "none" },
+{ name: "氯化鈣", formula: { Ca: 1, Cl: 2 }, kind: "salt", effect: "none" }
     ];
+//鹽類合成表
+  const NEUTRALIZATION_RECIPES = {
+  "氫氧化鈉+鹽酸": "氯化鈉",
+  "氫氧化鈉+硝酸": "硝酸鈉",
+  "氫氧化鉀+鹽酸": "氯化鉀",
+  "氫氧化鋰+氫氟酸": "氟化鋰",
+  "氫氧化鈣+硫酸": "硫酸鈣",
+  "氫氧化鎂+氰酸": "氰酸鎂",
+    "氫氧化鈉+硝酸": "硝酸鈉",
+"氫氧化鈣+硫酸": "硫酸鈣",
+"氫氧化鎂+氰酸": "氰酸鎂",
+    "氫氧化鈉+氫氟酸": "氟化鈉",
+"氫氧化鉀+氫氟酸": "氟化鉀",
+"氫氧化鋰+鹽酸": "氯化鋰",
+"氫氧化鉀+硝酸": "硝酸鉀",
+"氫氧化鋰+硝酸": "硝酸鋰",
+"氫氧化鈉+氰酸": "氰酸鈉",
+"氫氧化鉀+氰酸": "氰酸鉀",
+"氫氧化鋰+氰酸": "氰酸鋰",
+"氫氧化鈣+鹽酸": "氯化鈣",
+"氫氧化鎂+鹽酸": "氯化鎂"
+  // 可以擴充更多條目
+};
+
+
+
+    
     function findMol(sel){
       const cnt={}; sel.forEach(c=>c&&c.el&&(cnt[c.el]=(cnt[c.el]||0)+1));
       for(const m of MOLECULES){ const f=m.formula;
@@ -568,7 +604,7 @@ if ((m.kind || '').includes('acid')) {
       const handleEnd=()=>{if(gameOver)return;setSelEls([]);setSelMol(null);setTurn(t=>t==='player'?'ai':'player');addLog('結束回合');};  
       const handleSelectEl=i=>{if(gameOver||turn!=='player')return;setSelMol(null);setSelEls(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i]);};  
       
-        
+      //選擇分子  
       const handleSelectMol = (index) => {
         if (gameOver || turn !== 'player') return;
         setSelMol(index);
@@ -578,18 +614,59 @@ if ((m.kind || '').includes('acid')) {
         if (gameOver || turn !== 'player') return;
         setSelEnemyMol(index);
       };
-        // 合成的處理
-        const handleNeutralize = (selectedMol, enemyMol) => {
-          if (!canNeutralize(selectedMol, enemyMol)) return;
-        
-          // 當中和成功，更新分子區、生命值等狀態
-          setPF((f) => [...f, { ...selectedMol, effect: 'neutralized' }]);
-          setAF((f) => f.filter((mol) => mol !== enemyMol)); // 移除被中和的敵方分子
-        
-          // 顯示成功信息
-          showToast(`中和成功！${selectedMol.name} 和 ${enemyMol.name} 合成`);
-          addLog(`成功中和 ${enemyMol.name}`);
-        };
+      
+        // 酸鹼中和的處理
+const handleNeutralize = (myIndex, enemyIndex) => {
+  const selectedMol = pField[myIndex];
+  const enemyMol = aField[enemyIndex];
+
+  if (!canNeutralize(selectedMol, enemyMol)) return;
+
+  const key1 = `${selectedMol.name}+${enemyMol.name}`;
+  const key2 = `${enemyMol.name}+${selectedMol.name}`;
+  const saltName = NEUTRALIZATION_RECIPES[key1] || NEUTRALIZATION_RECIPES[key2];
+
+  const salt = MOLECULES.find(m => m.name === saltName);
+  const water = MOLECULES.find(m => m.name === "水");
+
+  if (!salt || !water) {
+    showToast("無法判定中和產物！");
+    return;
+  }
+
+  const saltMol = { ...salt, id: Date.now() };
+  const waterMol = { ...water, id: Date.now() + 1 };
+
+  // 1️⃣ 雙方各受到 5 點傷害
+  applyDamage('player', 5);
+  applyDamage('ai', 5);
+  addLog(`酸鹼中和造成雙方各 5 點傷害`);
+
+  // 2️⃣ 對手額外受到鹽類分子傷害（以原子序和計算）
+  const saltDamage = Object.entries(saltMol.formula || {}).reduce(
+    (sum, [el, n]) => sum + (ELEMENTS.indexOf(el) + 1) * n, 0
+  );
+  applyDamage('ai', saltDamage);
+  addLog(`鹽類 ${saltMol.name} 額外造成 ${saltDamage} 傷害`);
+
+  // 3️⃣ 移除雙方酸鹼分子 → 放入新生成的鹽與水
+  setPF(f => [saltMol, waterMol, ...f.filter((_, i) => i !== myIndex)]);
+  setAF(f => f.filter((_, i) => i !== enemyIndex));
+
+  // 清除選擇狀態
+  setSelMol(null);
+  setSelEnemyMol(null);
+  setCanCombine(false);
+
+  // 顯示訊息與觸發水的立即回血
+  showToast(`中和成功！生成 ${salt.name} 和 水`);
+  addLog(`中和：${selectedMol.name} + ${enemyMol.name} → ${salt.name} + 水`);
+  triggerRecovery('player', '水', 'immediate');
+};
+
+
+
+      
           React.useEffect(() => {
             if (selMol !== null && selEnemyMol !== null) {
               const selectedMol = pField[selMol];
@@ -719,9 +796,20 @@ if ((m.kind || '').includes('acid')) {
         {/* 對手分子區 */}
         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">
            {aField.map((c,i)=>
-        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selEnemyMol === i ? ' selected' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
-`}onClick={() => handleSelectEnemyMol(i)}>
-            <div className="symbol">{c.usable?c.el:c.name}</div>
+        <div key={i} className=
+          {
+          `card molecule
+          ${c.effect}
+          ${(c.kind || '').includes('acid') ? 'acid' : ''} 
+          ${(c.kind || '').includes('base') ? 'base' : ''} 
+          ${c.usable ? 'inert' : ''}
+          ${selEnemyMol === i ? ' selected' : ''}
+          ${justCombinedId === c.id ? 'newly-created' : ''}
+          
+          `}onClick={() => handleSelectEnemyMol(i)}>
+            
+          
+          <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
              {c.effect === 'recover' &&
           <div className="recover-info">
@@ -743,8 +831,16 @@ if ((m.kind || '').includes('acid')) {
         {/* 我方分子區 */}
         <div className="zone"><div className="zone-title">我方分子區</div><div className="field">
           {pField.map((c,i)=>
-          <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
-`} onClick={() => handleSelectMol(i)}>           
+          <div key={i} className={`card molecule
+          ${c.effect}
+          ${(c.kind || '').includes('acid') ? 'acid' : ''} 
+          ${(c.kind || '').includes('base') ? 'base' : ''} 
+          ${c.usable ? 'inert' : ''}
+          
+          ${selMol === i ? ' selected' : ''}
+          ${justCombinedId === c.id ? 'newly-created' : ''}
+          `} onClick={() => handleSelectMol(i)}> 
+            
             {c.usable
               ? React.createElement(React.Fragment, null,
                   React.createElement("div", { className: "symbol" }, c.el),
@@ -768,10 +864,10 @@ if ((m.kind || '').includes('acid')) {
       <div>
         {/* 如果可以中和，顯示合成按鈕 */}
  {selMol !== null && selEnemyMol !== null && (
-  <button 
-    onClick={() => handleNeutralize(pField[selMol], aField[selEnemyMol])}
-    disabled={!canCombine}
-  >
+<button 
+  onClick={() => handleNeutralize(selMol, selEnemyMol)}
+  disabled={!canCombine}
+>
     中和
   </button>
 )}
