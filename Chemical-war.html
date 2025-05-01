@@ -346,10 +346,12 @@ const [canCombine, setCanCombine] = React.useState(false);
       
 const canNeutralize = (selectedMol, enemyMol) => {
   return selectedMol && enemyMol && 
-    ((selectedMol.kind === 'base' && 
-    enemyMol.kind === 'acid')||(selectedMol.kind === 'acid' && 
-    enemyMol.kind === 'base'));
+    (
+      ((selectedMol.kind || '').includes('base') && (enemyMol.kind || '').includes('acid')) ||
+      ((selectedMol.kind || '').includes('acid') && (enemyMol.kind || '').includes('base'))
+    );
 };
+
 
       ////////////////////////////////////////
 
@@ -567,31 +569,15 @@ if ((m.kind || '').includes('acid')) {
       const handleSelectEl=i=>{if(gameOver||turn!=='player')return;setSelMol(null);setSelEls(s=>s.includes(i)?s.filter(x=>x!==i):[...s,i]);};  
       
         
-     const handleSelectMol = (index) => {
-  if (gameOver || turn !== 'player') return;
-
-  setSelMol(index);
-
-  // 這裡判斷是否可以合成
-  if (selMol !== null) {
-    const selectedMol = pField[selMol];
-    const enemyMol = aField[index]; // 假設索引指向敵方分子
-    if (canNeutralize(selectedMol, enemyMol)) {
-      setCanCombine(true); // 啟用合成按鈕
-    } else {
-      setCanCombine(false); // 禁用合成按鈕
-    }
-  }
-};
-     
-      // 更新選擇敵方分子的邏輯
-        const handleSelectEnemyMol = (index) => {
-           console.log("選擇敵方分子，索引:", index);
-          if (gameOver || turn !== 'player') return;
-        
-          // 設置選擇的敵方分子
-          setSelEnemyMol(index);
-        };
+      const handleSelectMol = (index) => {
+        if (gameOver || turn !== 'player') return;
+        setSelMol(index);
+      };
+           
+      const handleSelectEnemyMol = (index) => {
+        if (gameOver || turn !== 'player') return;
+        setSelEnemyMol(index);
+      };
         // 合成的處理
         const handleNeutralize = (selectedMol, enemyMol) => {
           if (!canNeutralize(selectedMol, enemyMol)) return;
@@ -604,16 +590,33 @@ if ((m.kind || '').includes('acid')) {
           showToast(`中和成功！${selectedMol.name} 和 ${enemyMol.name} 合成`);
           addLog(`成功中和 ${enemyMol.name}`);
         };
+          React.useEffect(() => {
+            if (selMol !== null && selEnemyMol !== null) {
+              const selectedMol = pField[selMol];
+              const enemyMol = aField[selEnemyMol];
+              if (canNeutralize(selectedMol, enemyMol)) {
+                setCanCombine(true);
+              } else {
+                setCanCombine(false);
+              }
+            } else {
+              setCanCombine(false);
+            }
+          }, [selMol, selEnemyMol, pField, aField]);
 
       
       const hasWater = pField.some(m => m.name === '水') || aField.some(m => m.name === '水');
+  
+      
       const canUse = (turn === 'player' && !gameOver) && (
-        (selMol !== null && pField[selMol].effect !== 'none') ||
-        (selEls.length === 1 && (
-          pHand[selEls[0]].usable ||
-          (ALKALI.includes(pHand[selEls[0]].el) && hasWater)
-        ))
-      );  
+  // 移除對分子牌的啟用條件
+  selMol === null && 
+  selEls.length === 1 && (
+    pHand[selEls[0]].usable ||
+    (ALKALI.includes(pHand[selEls[0]].el) && hasWater)
+  )
+);
+
       const handleUse = () => {
         if (turn !== 'player' || gameOver) return;
         if (selMol !== null) {
@@ -712,9 +715,11 @@ if ((m.kind || '').includes('acid')) {
   </div>
 </div>
         <div className="hp-section"><span className="hp-label">AI HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${aHP/MAX_HP*100}%`}}/></div><span>{aHP}</span></div>
-         <div className="zone"><div className="zone-title">對手分子區</div><div className="field">
+
+        {/* 對手分子區 */}
+        <div className="zone"><div className="zone-title">對手分子區</div><div className="field">
            {aField.map((c,i)=>
-        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
+        <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selEnemyMol === i ? ' selected' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
 `}onClick={() => handleSelectEnemyMol(i)}>
             <div className="symbol">{c.usable?c.el:c.name}</div>
             {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
@@ -728,10 +733,16 @@ if ((m.kind || '').includes('acid')) {
   )}
           </div>
         )}</div></div>
+
+        {/* log區 */}
         <div className="log">{log.slice(0,5).map((l,i)=>
           <div key={i} style={{color:i===0?'#ff0':'#ccc'}}>{l}</div>
         )}</div>
-        <div className="zone"><div className="zone-title">我方分子區</div><div className="field">{pField.map((c,i)=>
+
+
+        {/* 我方分子區 */}
+        <div className="zone"><div className="zone-title">我方分子區</div><div className="field">
+          {pField.map((c,i)=>
           <div key={i} className={`card molecule ${c.effect} ${(c.kind || '').includes('acid') ? 'acid' : ''} ${c.usable ? 'inert' : ''}${selMol === i ? ' selected' : ''}${justCombinedId === c.id ? 'newly-created' : ''}
 `} onClick={() => handleSelectMol(i)}>           
             {c.usable
@@ -756,16 +767,18 @@ if ((m.kind || '').includes('acid')) {
           <div>
       <div>
         {/* 如果可以中和，顯示合成按鈕 */}
-        {selMol !== null && (
-          <button 
-            onClick={() => handleNeutralize(pField[selMol], aField[0])} // 與敵方第0張分子進行合成
-            disabled={!canCombine}  // 禁用按鈕直到可以合成
-          >
-            合成
-          </button>
-        )}
+ {selMol !== null && selEnemyMol !== null && (
+  <button 
+    onClick={() => handleNeutralize(pField[selMol], aField[selEnemyMol])}
+    disabled={!canCombine}
+  >
+    中和
+  </button>
+)}
       </div>
     </div>
+
+        
              <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
 
         <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
