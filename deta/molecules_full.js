@@ -1,3 +1,4 @@
+ export    const MAX_HP = 128; //血量
  export    const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"]; //所有元素
  export    const ALKALI = ["Li","Na","K"]; // 1A族
  export    const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
