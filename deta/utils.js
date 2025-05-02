@@ -1,5 +1,7 @@
 // utils.js：遊戲邏輯工具箱
 
+import { ELEMENTS, MOLECULES, METALS, RECOVER_CONFIG, MAX_HP } from './molecules_full.js';
+
   export  const drawPool = []; //卡池機率
     ELEMENTS.forEach(e => {
       const w = WEIGHTS[e]||3;
@@ -55,4 +57,14 @@ export function sumAtoms(formula, ELEMENTS) {
     (sum, [el, n]) => sum + (ELEMENTS.indexOf(el) + 1) * n,
     0
   );
+}
+
+// 觸發回血邏輯
+export function triggerRecovery(target, molName, trigger, setP, setA, addLog) {
+  const cfg = RECOVER_CONFIG[molName];
+  if (!cfg || !cfg[trigger]) return;
+  const heal = cfg[trigger];
+  const setter = target === 'player' ? setP : setA;
+  setter(hp => Math.min(MAX_HP, hp + heal));
+  addLog(`${molName}${trigger === 'immediate' ? ' 合成回復' : ' 每回合回復'} ${heal} HP`);
 }
