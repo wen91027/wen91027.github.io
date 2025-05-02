@@ -1,3 +1,4 @@
+//分子合成表
 export const MOLECULES = [
   { name: "一氧化氮",  formula: { N: 1, O: 1 },        kind: "none",         effect: "poison"     },
   { name: "一氧化碳",  formula: { C: 1, O: 1 },        kind: "none",         effect: "poison"     },
@@ -74,3 +75,32 @@ export const MOLECULES = [
 { name: "氰酸鋰", formula: { Li: 1, C: 1, N: 1, O: 1 }, kind: "salt", effect: "none" },
 { name: "氯化鈣", formula: { Ca: 1, Cl: 2 }, kind: "salt", effect: "none" }
 ];
+
+//酸鹼中和表
+export const NEUTRALIZATION_RECIPES = {
+  "氫氧化鈉+鹽酸": "氯化鈉",
+  "氫氧化鈉+硝酸": "硝酸鈉",
+  "氫氧化鉀+鹽酸": "氯化鉀",
+  "氫氧化鋰+氫氟酸": "氟化鋰",
+  "氫氧化鈣+硫酸": "硫酸鈣",
+  "氫氧化鎂+氰酸": "氰酸鎂",
+    "氫氧化鈉+硝酸": "硝酸鈉",
+"氫氧化鈣+硫酸": "硫酸鈣",
+"氫氧化鎂+氰酸": "氰酸鎂",
+    "氫氧化鈉+氫氟酸": "氟化鈉",
+"氫氧化鉀+氫氟酸": "氟化鉀",
+"氫氧化鋰+鹽酸": "氯化鋰",
+"氫氧化鉀+硝酸": "硝酸鉀",
+"氫氧化鋰+硝酸": "硝酸鋰",
+"氫氧化鈉+氰酸": "氰酸鈉",
+"氫氧化鉀+氰酸": "氰酸鉀",
+"氫氧化鋰+氰酸": "氰酸鋰",
+"氫氧化鈣+鹽酸": "氯化鈣",
+"氫氧化鎂+鹽酸": "氯化鎂"
+  // 可以擴充更多條目
+};
+
+//水的恢復量設定
+export const RECOVER_CONFIG = {
+  '水': { immediate: 7, perTurn: 1 }
+};
