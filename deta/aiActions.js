@@ -6,8 +6,26 @@ import { MOLECULES, ELEMENTS } from './molecules_full';
 
 /**
  * AI 的主要行動函式
- * @param {object} params - 所有狀態與控制函式作為參數傳入
+  * 此函式會在 AI 回合觸發，內部邏輯包含：
+ * - 嘗試以現有手牌合成分子（選擇原子序總和最高者）
+ * - 若為酸性分子會腐蝕玩家金屬卡
+ * - 根據使用的元素計算並造成傷害
+ * - 有機率進行第二次以上連續合成行動
+ * - 若無可行動，則選擇結束回合或隨機棄牌
+ *
+ * @param {object} params - 傳入所有必要的狀態與控制函式
+ * @param {Array} params.aHand - AI 當前手牌
+ * @param {Function} params.setAH - 更新 AI 手牌的函式
+ * @param {Array} params.aField - AI 分子區
+ * @param {Function} params.setAF - 更新 AI 分子區的函式
+ * @param {Array} params.pHand - 玩家手牌（腐蝕判斷用）
+ * @param {Function} params.setPH - 更新玩家手牌（腐蝕後）
+ * @param {Function} params.addLog - 新增遊戲紀錄用
+ * @param {Function} params.setAiThinking - 控制 AI 思考遮罩
+ * @param {Function} params.applyDamage - 傷害套用函式
+ * @param {Function} params.handleEnd - 結束回合函式
  */
+
 export async function aiTakeAction({
   aHand,
   setAH,
@@ -121,4 +139,3 @@ export async function aiTakeAction({
   }
   setAiThinking(false);
 }
-
