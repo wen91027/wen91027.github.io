@@ -2,14 +2,7 @@
     const ALKALI = ["Li","Na","K"]; // 1A族
     const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
     const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5}; //機率比重
-    
-
-    const drawPool = []; //卡池機率
-    ELEMENTS.forEach(e => {
-      const w = WEIGHTS[e]||3;
-      for (let i=0;i<Math.round(w*2);i++) drawPool.push(e);
-    });
-
+   
 
 //分子合成表
 export const MOLECULES = [
