@@ -1,5 +1,5 @@
 //腐蝕相關函式
-function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 預設
+export function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 預設
   const metals = METALS;
   const metalIndices = hand
     .map((c, i) => (metals.includes(c.el) && !c.corroded ? i : -1))
@@ -16,7 +16,7 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
   return 0;
 }
 //清除腐蝕
-    function clearCorrosion(hand, setHand) {
+    export function clearCorrosion(hand, setHand) {
   const newHand = hand.map(c => c.corroded ? { ...c, corroded: false } : c);
   setHand(newHand);
 }
