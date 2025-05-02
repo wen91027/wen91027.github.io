@@ -1,7 +1,7 @@
-    const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"]; //所有元素
-    const ALKALI = ["Li","Na","K"]; // 1A族
-    const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
-    const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5}; //機率比重
+ export    const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"]; //所有元素
+ export    const ALKALI = ["Li","Na","K"]; // 1A族
+ export    const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
+ export    const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5}; //機率比重
    
 
 //分子合成表
