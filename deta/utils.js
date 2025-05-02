@@ -1,5 +1,11 @@
 // utils.js：遊戲邏輯工具箱
 
+  export  const drawPool = []; //卡池機率
+    ELEMENTS.forEach(e => {
+      const w = WEIGHTS[e]||3;
+      for (let i=0;i<Math.round(w*2);i++) drawPool.push(e);
+    });
+
 // 抽卡邏輯：依照 drawPool 機率抽出一張元素卡
 export function drawCard(drawPool, ELEMENTS) {
   const el = drawPool[Math.floor(Math.random() * drawPool.length)];
