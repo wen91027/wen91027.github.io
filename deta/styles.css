@@ -1,0 +1,341 @@
+body {
+  margin: 0;
+  background: #0d1321;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+}
+
+.toast {
+  position: fixed;
+  top: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #f55;
+  padding: 8px 16px;
+  border: 1px solid #f55;
+  border-radius: 4px;
+  z-index: 2000;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.toast.show {
+  opacity: 1;
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1em;
+}
+
+.board {
+  width: 90%;
+  max-width: 800px;
+  background: #1a242f;
+  border: 2px solid #444;
+  border-radius: 10px;
+  padding: 1em;
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  z-index: 1000;
+}
+
+.overlay button {
+  margin-top: 1em;
+}
+
+.hp-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.hp-label {
+  margin-right: 8px;
+}
+
+.hp-bar {
+  flex: 1;
+  background: #222;
+  border: 1px solid #0ff;
+  border-radius: 4px;
+  height: 16px;
+  margin: 0 8px;
+  overflow: hidden;
+}
+
+.hp-inner {
+  background: #0ff;
+  height: 100%;
+}
+
+.zone {
+  margin: 12px 0;
+}
+
+.zone-title {
+  color: #ccc;
+  margin-bottom: 4px;
+}
+
+.hand, .field {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card {
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 6px;
+  margin: 4px;
+  transition: transform .2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+.card.element {
+  width: 50px;
+  height: 70px;
+  background: #1f2a36;
+  cursor: pointer;
+  position: relative;
+}
+
+.card.element.inert { background: #555; }
+.card.element.alkali { background: #a00; }
+
+.card.element.selected {
+  border-color: #0f0;
+  box-shadow: 0 0 6px #0f0;
+}
+
+.card.element.corroded {
+  background: linear-gradient(45deg, #555 25%, #333 25%, #333 50%, #555 50%);
+  background-size: 6px 6px;
+}
+
+.card.element .symbol {
+  font-size: 1.2em;
+  margin-top: 4px;
+}
+
+.card.element .number {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.8em;
+  color: #0ff;
+}
+
+.card.element .defense,
+.card.element .explode {
+  position: absolute;
+  bottom: 4px;
+  width: 100%;
+  font-size: 0.6em;
+  color: #fff;
+  text-align: center;
+}
+
+.card.element .explode {
+  color: #ff0;
+}
+
+.card.element.corroded::after {
+  content: "腐蝕";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.4em;
+  color: #ff6688;
+}
+
+.card.molecule {
+  width: 80px;
+  min-height: 60px;
+  background: #14232e;
+  cursor: pointer;
+  position: relative;
+}
+
+.card.molecule.recover {
+  background: #00AEAE;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px #fff;
+}
+
+.card.molecule.acid {
+  background: #BF0060;
+}
+
+.card.molecule.burn {
+  background: #663300;
+}
+
+.card.molecule.poison {
+  background: #440066;
+}
+
+.card.molecule.corrosion {
+  background: #661100;
+}
+
+.card.molecule.selected {
+  border: 2px solid #0f0;
+  box-shadow: 0 0 6px #0f0;
+}
+
+.card.molecule.inert {
+  background: #555;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px #fff;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.card.molecule .symbol {
+  font-size: 1em;
+  margin: 4px 0;
+}
+
+.card.molecule .recover-info,
+.card.molecule .corrosion-info {
+  position: absolute;
+  bottom: 4px;
+  width: 100%;
+  font-size: 0.6em;
+  color: #fff;
+  text-align: center;
+}
+
+.card.molecule.corrosion .corrosion-info {
+  color: #ff6688;
+  font-weight: bold;
+}
+
+.controls {
+  margin: 8px 0;
+}
+
+button {
+  font-family: 'Orbitron', sans-serif;
+  background: #112233;
+  color: #0ff;
+  border: 1px solid #0ff;
+  border-radius: 4px;
+  padding: 6px 12px;
+  margin: 0 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover:enabled {
+  background: #334455;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prompt {
+  color: #8cf;
+  margin-top: 4px;
+}
+
+.log {
+  text-align: center;
+  max-height: 120px;
+  overflow-y: auto;
+  background: #112233;
+  padding: 8px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  margin-top: 8px;
+  font-size: 1em;
+}
+
+.enemy-hand .card {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ai-text {
+  font-size: 1.5em;
+  color: #0ff;
+  animation: pulse 1s infinite;
+  text-shadow: 0 0 10px #0ff;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fly-in {
+  0% { transform: translateY(-80px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes combine-out {
+  0% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.2) translateY(-40px); opacity: 0; }
+}
+
+.card.element.just-drawn {
+  animation: fly-in 0.5s ease-out;
+  z-index: 10;
+}
+
+.card.element.combine-out {
+  animation: combine-out 0.5s ease-in-out forwards;
+}
+
+.card.molecule.newly-created {
+  animation: fly-in 0.5s ease-out;
+  z-index: 999;
+}
+
+.card.molecule.flash::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  animation: flash-glow 0.8s ease-out;
+  pointer-events: none;
+  z-index: 999;
+}
+
+@keyframes flash-glow {
+  0% { box-shadow: 0 0 0px #fff; transform: scale(1); }
+  50% { box-shadow: 0 0 20px #fff; transform: scale(1.05); }
+  100% { box-shadow: 0 0 0px #fff; transform: scale(1); }
+}
