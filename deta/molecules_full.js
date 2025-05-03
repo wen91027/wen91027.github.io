@@ -1,12 +1,14 @@
- export    const MAX_HP = 128; //血量
- export    const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"]; //所有元素
- export    const ALKALI = ["Li","Na","K"]; // 1A族
- export    const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
- export    const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5}; //機率比重
+(function () {
+
+ const MAX_HP = 128; //血量
+ const ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar","K","Ca"]; //所有元素
+ const ALKALI = ["Li","Na","K"]; // 1A族
+ const METALS = ["Li", "Na", "K", "Be", "Mg", "Ca", "Al"]; // 金屬元素
+ const WEIGHTS = {H:16,C:10,O:12,N:8,Na:5,He:2,Ne:1,Ar:0.5}; //機率比重
    
 
 //分子合成表
-export const MOLECULES = [
+const MOLECULES = [
   { name: "一氧化氮",  formula: { N: 1, O: 1 },        kind: "none",         effect: "poison"     },
   { name: "一氧化碳",  formula: { C: 1, O: 1 },        kind: "none",         effect: "poison"     },
   { name: "乙炔",      formula: { C: 2, H: 2 },        kind: "organic",      effect: "burn"       },
@@ -84,7 +86,7 @@ export const MOLECULES = [
 ];
 
 //酸鹼中和表
-export const NEUTRALIZATION_RECIPES = {
+const NEUTRALIZATION_RECIPES = {
   "氫氧化鈉+鹽酸": "氯化鈉",
   "氫氧化鈉+硝酸": "硝酸鈉",
   "氫氧化鉀+鹽酸": "氯化鉀",
@@ -108,6 +110,18 @@ export const NEUTRALIZATION_RECIPES = {
 };
 
 //水的恢復量設定
-export const RECOVER_CONFIG = {
+const RECOVER_CONFIG = {
   '水': { immediate: 7, perTurn: 1 }
 };
+
+ // 掛到全域
+ window.MAX_HP = MAX_HP;
+  window.ELEMENTS = ELEMENTS;
+  window.ALKALI = ALKALI;
+  window.METALS = METALS;
+  window.WEIGHTS = WEIGHTS;
+  window.MOLECULES = MOLECULES;
+  window.NEUTRALIZATION_RECIPES = NEUTRALIZATION_RECIPES;
+  window.RECOVER_CONFIG = RECOVER_CONFIG;
+})();
+ 
