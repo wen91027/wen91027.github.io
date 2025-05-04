@@ -15,7 +15,7 @@
     setTurn(t => t === 'player' ? 'ai' : 'player');
     addLog('結束回合');
   }
-
+ 
   function handleStartPlayerTurn({
     drawCardsTo,
     pHand,
