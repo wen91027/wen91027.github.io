@@ -114,7 +114,6 @@ const RECOVER_CONFIG = {
 };
 
  // 掛到全域
- window.MAX_HP = MAX_HP;
   window.ELEMENTS = ELEMENTS;
   window.ALKALI = ALKALI;
   window.METALS = METALS;
