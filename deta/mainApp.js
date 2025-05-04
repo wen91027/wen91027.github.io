@@ -1,5 +1,5 @@
 (function () {
-  console.log("mainApp.js 載入成功", window.MOLECULES, window.drawCard);
+ 
   const {
     React,
     ReactDOM,
