@@ -1,23 +1,38 @@
 (function () {
   const {
-    ELEMENTS, ALKALI, METALS, MOLECULES, NEUTRALIZATION_RECIPES, WEIGHTS
+    React,
+    ReactDOM,
+    ELEMENTS,
+    ALKALI,
+    METALS,
+    MOLECULES,
+    NEUTRALIZATION_RECIPES,
+    WEIGHTS,
+    drawCard,
+    findMol,
+    corrodeMetals,
+    clearCorrosion,
+    sumAtoms,
+    triggerRecovery,
+    handleAiTurn,
+    canNeutralize,
+    handleNeutralize,
+    applyDamage,
+    useWaterRecovery,
+    handleExplosion,
+    useGameState,
+    initializeGameState,
+    handleEndTurn,
+    useDrawPhase,
+    renderField,
+    renderHand,
+    renderControls,
+    renderOverlay,
+    renderLog,
+    renderPrompt,
+    animationStates,
+    resetAnimations,
   } = window;
-
-  const {
-    drawCard, findMol, corrodeMetals, clearCorrosion, sumAtoms, triggerRecovery
-  } = window;
-
-  const { handleAiTurn } = window;
-  const { canNeutralize, handleNeutralize } = window;
-  const { applyDamage, useWaterRecovery, handleExplosion } = window;
-  const { useGameState, initializeGameState } = window;
-  const { handleEndTurn, useDrawPhase } = window;
-  const {
-    renderField, renderHand, renderControls, renderOverlay, renderLog, renderPrompt
-  } = window;
-  const { animationStates, resetAnimations } = window;
-
-  const { useState, useEffect, useRef } = React;
 
   window.App = function App() {
     const {
@@ -41,46 +56,34 @@
     } = useGameState();
 
     const addLog = (msg) => setLog((l) => [msg, ...l]);
-    const firstDraw = useRef(true);
+    const firstDraw = React.useRef(true);
 
-    useEffect(() => {
-      initializeGameState(
-        setP, setA, setPH, setAH, setPF, setAF,
-        setSelEls, setSelMol, setLog, setGameOver, setTurn,
-        firstDraw, addLog
-      );
+    React.useEffect(() => {
+      initializeGameState(setP, setA, setPH, setAH, setPF, setAF, setSelEls, setSelMol, setLog, setGameOver, setTurn, firstDraw, addLog);
     }, []);
 
-    useEffect(() => {
+    React.useEffect(() => {
       if (gameOver) return;
       if (turn === 'player') useDrawPhase(pHand, setPH, aField, setPH, setP, addLog);
       else useDrawPhase(aHand, setAH, pField, setAH, setA, addLog);
     }, [turn, gameOver]);
 
-    useEffect(() => {
+    React.useEffect(() => {
       if (pHP <= 0) setGameOver('lose');
       else if (aHP <= 0) setGameOver('win');
     }, [pHP, aHP]);
 
-    useEffect(() => {
+    React.useEffect(() => {
       if (gameOver || turn !== 'ai') return;
-      handleAiTurn(
-        aHand, setAH, aField, setAF,
-        pHand, setPH, setP, setA,
-        addLog, handleEndTurn,
-        setAiThinking, gameOver
-      );
+      handleAiTurn(aHand, setAH, aField, setAF, pHand, setPH, setP, setA, addLog, handleEndTurn, setAiThinking, gameOver);
     }, [turn, gameOver]);
 
     return React.createElement("div", { className: "game-container" },
       React.createElement("div", { className: "board" },
         React.createElement("h1", null, "真實煉金：化合之戰"),
         renderOverlay(gameOver, aiThinking, () =>
-          initializeGameState(
-            setP, setA, setPH, setAH, setPF, setAF,
-            setSelEls, setSelMol, setLog, setGameOver, setTurn,
-            firstDraw, addLog
-          )),
+          initializeGameState(setP, setA, setPH, setAH, setPF, setAF, setSelEls, setSelMol, setLog, setGameOver, setTurn, firstDraw, addLog)
+        ),
         React.createElement("img", {
           src: "https://wen91027.github.io/img/BN_top.jpeg",
           alt: "遊戲首圖",
@@ -115,7 +118,4 @@
       )
     );
   };
-
-  // 掛載 React App
-  ReactDOM.render(React.createElement(window.App), document.getElementById("root"));
 })();
