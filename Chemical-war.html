@@ -21,12 +21,21 @@
     .hp-inner { background:#0ff; height:100%; }
     .zone { margin:12px 0; }
     .zone-title { color:#ccc; margin-bottom:4px; }
-    .hand { display:flex; flex-wrap:wrap; justify-content:center; }
+    .hand {
+      height: 120px; 
+  display: flex;
+  flex-wrap: nowrap;         /* ❗ 不換行 */
+  overflow-x: auto;          /* ❗ 開啟橫向滾動 */
+  justify-content: flex-start;
+  padding: 0.5em 0;
+  gap: 1em;
+  scrollbar-width: thin;     /* Firefox 支援 */
+}
     .field { display:flex; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; }
     
     .card { border:1px solid #555; border-radius:10px; padding:8px; margin:4px; transition:transform .2s; display:flex; flex-direction:column; align-items:center; }
     .card:hover { transform:translateY(-4px); }
-    .card.element { width:75px; height:100px; background:#1f2a36; cursor:pointer; position:relative; }
+    .card.element { width:75px; height:100px; background:#1f2a36;flex-shrink: 0; cursor:pointer; position:relative; }
     .card.element.inert { background:#555; }
     .card.element.alkali { background:#a00; }
     .card.element .symbol {  
@@ -64,13 +73,21 @@
         position: absolute;
         bottom: 4px;
         width: 100%;
-        font-size: 0.6em;
+        font-size: 1em;
         color: #ff6688; /* 比較偏粉紅紅色 */
         text-align: center;
       }
     
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
-    .controls { margin:8px 0; }
+        .controls {
+ width: 100%;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #0ff;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.6);
+  padding: 10px 0;
+}
+
    button {
   font-family: 'Orbitron', sans-serif;
   background: #112233;
@@ -80,7 +97,7 @@
   padding: 12px 20px;      /* ← 更大的內邊距 */
   margin: 0 6px;
   cursor: pointer;
-  font-size: 1.2em;        /* ← 更大的字體 */
+  font-size: 1.5em;        /* ← 更大的字體 */
   transition: background 0.2s;
 }
     button:hover:enabled { background:#334455; }
@@ -93,9 +110,71 @@
     .hp-label, .hp-text { margin: 2px 0; }
     .hp-bar { flex: none !important; width: 100% !important; margin: 4px 0; }
     .zone-title { font-size: 0.9em; }
-    .hand, .field { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 1.5em; }
     .prompt, .log { font-size: 1em; }
     .bg-logo {  width: 100%;  max-width: 100%;  height: auto;  display: block;  margin: 0 auto 1em;}
+/*新東西測試*/
+
+    .board {padding-bottom: 500px; /* 或視按鈕區塊高度而定，確保下方內容不被擋住 */}
+
+
+
+.floating-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background: rgba(13, 19, 33, 0.95);
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+    
+    /* 固定浮動區塊容器 */
+.floating-ui {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* 玩家 HP 條樣式調整（橫向） */
+.floating-ui .hp-section {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 90%;       /* ⭐ 給個最大寬度 */
+  gap: 8px;
+}
+
+.floating-ui .hp-bar {
+  flex: 1;
+  max-width: 100%; /* ⭐ 自訂最大寬度 */
+  height: 20px;
+}
+    
+.floating-ui .hand {
+  display: flex;
+  flex-wrap: nowrap;     /* ❗ 不換行 */
+  overflow-x: auto;      /* ❗ 開啟橫向滾動 */
+    -webkit-overflow-scrolling: touch;  /* 在 iOS 上啟用慣性滾動 */
+  scrollbar-color: #0ff #112233;       /* 更明顯的捲動條色彩 */
+  justify-content: flex-start;
+  padding: 0.5em 0;
+  gap: 1em;
+  scrollbar-width: thin; /* Firefox 支援 */
+}
+
+.floating-ui .zone {
+  width: 100%;
+  overflow: hidden; /* 可加可不加 */
+}
+
 
     
    /* 動畫效果新增在這 */
@@ -183,6 +262,7 @@
 }
     
   }
+
 
 
     
@@ -721,17 +801,20 @@ const handleNeutralize = (myIndex, enemyIndex) => {
           `}onClick={() => handleSelectEnemyMol(i)}>
             
           
-          <div className="symbol">{c.usable?c.el:c.name}</div>
-            {c.usable&&<div className="block-info">阻擋{ELEMENTS.indexOf(c.el)+1}傷害</div>}
-             {c.effect === 'recover' &&
-          <div className="recover-info">
-            持續回復{RECOVER_CONFIG['水'].perTurn}HP
-          </div>
-        }
-             {c.effect === 'corrosion' && (
-    <div className="corrosion-info">腐蝕金屬</div>
-  )}
-          </div>
+     {c.usable
+      ? React.createElement(React.Fragment, null,
+          React.createElement("div", { className: "symbol" }, c.el),
+          React.createElement("div", { className: "block-info" }, `阻擋${ELEMENTS.indexOf(c.el)+1}傷害`)
+        )
+      : React.createElement("div", { className: "name" }, c.name)
+    }
+    {c.effect === 'recover' && (
+      <div className="recover-info">持續回復{RECOVER_CONFIG['水'].perTurn}HP</div>
+    )}
+    {c.effect === 'corrosion' && (
+      <div className="corrosion-info">腐蝕金屬</div>
+    )}
+  </div>
         )}</div></div>
 
         {/* log區 */}
@@ -785,11 +868,13 @@ const handleNeutralize = (myIndex, enemyIndex) => {
 )}
       </div>
     </div>
-
-        
+<div className="floating-container">
+        <div className="floating-ui">
+         <div className="zone"> <div className="zone-title">玩家區域</div>
              <div className="hp-section"><span className="hp-label">玩家 HP</span><div className="hp-bar"><div className="hp-inner" style={{width:`${pHP/MAX_HP*100}%`}}/></div><span>{pHP}</span></div>
 
-        <div className="zone"><div className="zone-title">玩家手牌</div><div className="hand">{pHand.map((c,i)=>
+        
+          <div className="hand">{pHand.map((c,i)=>
  <div key={i}
   className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${justDrawnIndices.includes(i) ? ' just-drawn' : ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}`}
   onClick={() => handleSelectEl(i)}>
@@ -800,7 +885,9 @@ const handleNeutralize = (myIndex, enemyIndex) => {
           </div>
         )}</div></div>
         <div className="prompt">{possibleList.length>0?`可合成: ${possibleList.join('、')}`:'無可合成化合物'}</div>
+        </div>
         <div className="controls"><button onClick={handleCombine} disabled={turn!=='player'||gameOver||selEls.length<2}>合成</button><button onClick={handleUse} disabled={!canUse}>使用</button><button onClick={handleDiscard} disabled={turn!=='player'||gameOver||selEls.length<1}>棄牌</button><button onClick={handleEnd} disabled={turn!=='player'||gameOver}>結束回合</button></div>
+  </div>
          </div></div>);
     }
     ReactDOM.render(<App/>,document.getElementById('root'));
