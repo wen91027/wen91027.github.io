@@ -3,7 +3,7 @@
 
 (function () {
   const { sumAtoms, corrodeMetals } = window.utils;
-  const { MOLECULES, ELEMENTS } = window.molecules_full;
+  const { MOLECULES, ELEMENTS } = window.moleculesData;
 
   window.aiTakeAction = async function ({
     aHand,
