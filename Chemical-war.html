@@ -346,6 +346,85 @@ const NEUTRALIZATION_RECIPES = window.NEUTRALIZATION_RECIPES;
       }
       return null;
     }
+    // 共用卡牌使用邏輯模組 ////////////////////
+function useElementCard(card, {userId, user, setUserHand, setUserField,opponentField, setOpponentField,applyDamage, addLog, showToast
+}) {
+
+  // 惰性氣體：防禦盾牌
+  if (card.usable) {
+    setUserField(f => [{ el: card.el, usable: true }, ...f]);
+    addLog(`使用 惰性氣體 ${card.el}`);
+    return true;
+  }
+
+  // 1A族 + 場上有水：引爆水造成爆炸傷害
+  const hasWater = [...opponentField, ...user.field].some(m => m.name === '水');
+  if (ALKALI.includes(card.el) && hasWater) {
+    const waterCount = [...opponentField, ...user.field].filter(m => m.name === '水').length;
+    const atomNum = ELEMENTS.indexOf(card.el) + 1;
+    const waterMol = MOLECULES.find(m => m.name === '水');
+    const waterAtomNum = Object.entries(waterMol.formula).reduce((s, [el, n]) => s + (ELEMENTS.indexOf(el) + 1) * n, 0);
+    const dmg = (atomNum + waterAtomNum) * waterCount;
+
+    showToast(`實驗室爆炸了！造成${dmg}點傷害`);
+    addLog(`引爆水造成 ${dmg} 傷害`);
+    const opponentId = userId === 'player' ? 'ai' : 'player';
+    applyDamage(opponentId, dmg);
+
+
+    // 清除所有水分子，並加入鹼
+    const newMolName = card.el === 'Li' ? '氫氧化鋰' : card.el === 'Na' ? '氫氧化鈉' : '氫氧化鉀';
+    const newMol = MOLECULES.find(m => m.name === newMolName);
+    setUserField(f => [newMol, ...f.filter(m => m.name !== '水')]);
+    setOpponentField(f => f.filter(m => m.name !== '水'));
+
+    return true;
+  }
+
+  // 其他元素卡的 fallback 處理
+  addLog(`使用 元素 ${card.el}`);
+  return true;
+}
+
+function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDamage, addLog, showToast,triggerRecovery
+}) {
+  // 觸發腐蝕
+  if ((molecule.kind || '').includes('acid')) {
+    const count = corrodeMetals(opponentHand, setOpponentHand);
+    if (count > 0) {
+      const msg = `${userId === 'player' ? '酸性分子腐蝕了敵方' : '敵方酸性分子腐蝕了你'} ${count} 張金屬卡`;
+      addLog(msg);
+    }
+  }
+
+  // 立即回血（ex. 水）
+  if (molecule.name === '水') {
+    triggerRecovery(userId, '水', 'immediate');
+    showToast(`合成水，回復 ${RECOVER_CONFIG['水'].immediate} HP`);
+  }
+
+  // 👉 你可於此擴充更多被動效果（如毒、燃燒等）
+}
+
+    function MoleculeOnCombine(molecule, {sourceEls,userId,opponentId,applyDamage,addLog,showToast,triggerRecovery,opponentHand,setOpponentHand
+}) {
+  // 執行分子效果（腐蝕、水回復等）
+  MoleculeEffect(molecule, {
+    userId,
+    opponentHand,
+    setOpponentHand,
+    applyDamage,
+    addLog,
+    showToast,
+    triggerRecovery
+  });
+
+  // 合成造成基礎傷害（來自使用的原子序加總）
+  const dmg = sourceEls.reduce((sum, card) => sum + (ELEMENTS.indexOf(card.el) + 1), 0);
+  applyDamage(opponentId, dmg);
+  addLog(`${userId === 'player' ? '對敵人造成' : '你受到'} ${dmg} 傷害`);
+}
+
 
     
 //腐蝕相關函式
@@ -395,7 +474,9 @@ function corrodeMetals(hand, setHand, count = 2) {  // <--- 加一個 count = 2 
       const addLog=msg=>setLog(l=>[msg,...l]);
       const resetGame=()=>{setP(MAX_HP);setA(MAX_HP);setPH(Array.from({length:5},drawCard));setAH(Array.from({length:5},drawCard));setPF([]);setAF([]);setSelEls([]);setSelMol(null);setLog([]);setGameOver(null);setTurn('player');firstDraw.current=true;addLog('遊戲重置，玩家先手');};
       const [justCombinedId, setJustCombinedId] = React.useState(null);
-      const [justDrawnIndices, setJustDrawnIndices] = React.useState([]);
+      const [pJustDrawnIndices, setPJustDrawnIndices] = React.useState([]);
+      const [aJustDrawnIndices, setAJustDrawnIndices] = React.useState([]);
+
       const [justUsedIndices, setJustUsedIndices] = React.useState([]);
 //酸鹼//////////////////////////////////////////////////
 // 計算玩家能否進行酸鹼中和
@@ -424,8 +505,13 @@ function drawCardsTo(currentHand, setHand, count = 2, label = '玩家') {
 if (label === '玩家' || label === 'AI') {
 const startIndex = currentHand.length;
 const indices = newCards.map((_, i) => startIndex + i);
-setJustDrawnIndices(indices);   // 共用動畫 index
-setTimeout(() => setJustDrawnIndices([]), 800);
+  if (label === '玩家') {
+    setPJustDrawnIndices(indices);
+    setTimeout(() => setPJustDrawnIndices([]), 800);
+  } else if (label === 'AI') {
+    setAJustDrawnIndices(indices);
+    setTimeout(() => setAJustDrawnIndices([]), 800);
+  }
 }
 
 
@@ -443,6 +529,9 @@ setTimeout(() => setJustDrawnIndices([]), 800);
         setter(hp => Math.min(MAX_HP, hp + heal));
         addLog(`${molName}${trigger==='immediate'? ' 合成回復':' 每回合回復'} ${heal} HP`);
       };
+
+
+
       
       //aiTakeAction() AI動作
       async function aiTakeAction() {
@@ -474,17 +563,23 @@ setTimeout(() => setJustDrawnIndices([]), 800);
               });
           
               setAH([...hand]); // 🔥 手牌同步
-              setAF(f => [m, ...f]); // 分子區同步
-              addLog(`AI 合成 ${m.name}`);
+              const newMol = { ...m, id: Date.now()+ Math.random() };
+              setAF(f => [newMol, ...f]);
+              addLog(`AI 合成 ${newMol.name}`);
+
           
-              if ((m.kind || '').includes('acid')) {
-                const corroded = corrodeMetals(pHand, setPH);
-                if (corroded > 0) addLog(`敵方酸性分子腐蝕了你 ${corroded} 張金屬卡`);
-              }
-          
-              const dmg = used.reduce((s, el) => s + (ELEMENTS.indexOf(el) + 1), 0);
-              applyDamage('player', dmg);
-              addLog(`你受到 ${dmg} 傷`);
+  MoleculeOnCombine(newMol, {
+  sourceEls: used.map(el => ({ el })), // 模擬元素卡片格式
+  userId: 'ai',
+  opponentId: 'player',
+  applyDamage,
+  addLog,
+  showToast,
+  triggerRecovery,
+  opponentHand: pHand,
+  setOpponentHand: setPH
+});
+
           
               let continueAction = true;
           while (continueAction) {
@@ -514,17 +609,24 @@ setTimeout(() => setJustDrawnIndices([]), 800);
               });
           
               setAH([...hand]);
-              setAF(f => [m, ...f]);
-              addLog(`AI 合成 ${m.name}`);
-          
-              if ((m.kind || '').includes('acid')) {
-                const corroded = corrodeMetals(pHand, setPH);
-                if (corroded > 0) addLog(`敵方酸性分子腐蝕了你 ${corroded} 張金屬卡`);
-              }
-          
-              const dmg = used.reduce((s, el) => s + (ELEMENTS.indexOf(el) + 1), 0);
-              applyDamage('player', dmg);
-              addLog(`你受到 ${dmg} 傷`);
+           const newMol = { ...m, id: Date.now()+ Math.random() };
+            setAF(f => [newMol, ...f]);
+            addLog(`AI 合成 ${newMol.name}`);
+
+
+              MoleculeOnCombine(newMol, {
+            sourceEls: used.map(el => ({ el })), // 模擬元素卡片格式
+            userId: 'ai',
+            opponentId: 'player',
+            applyDamage,
+            addLog,
+            showToast,
+            triggerRecovery,
+            opponentHand: pHand,
+            setOpponentHand: setPH
+          });
+
+  
             } else {
               continueAction = false;
             }
@@ -536,7 +638,35 @@ setTimeout(() => setJustDrawnIndices([]), 800);
             
             } else {
 
-              
+    
+        // 🧠 嘗試使用惰性氣體或1A族（共用邏輯）
+        const specialIdx = hand.findIndex(c =>
+          c.usable || (ALKALI.includes(c.el) && [...aField, ...pField].some(m => m.name === '水'))
+        );
+        
+        if (specialIdx !== -1) {
+          const card = hand[specialIdx];
+          const used = useElementCard(card, {
+            userId: 'ai',
+            user: { field: aField },
+            setUserHand: setAH,
+            setUserField: setAF,
+            opponentField: pField,
+            setOpponentField: setPF,
+            applyDamage,
+            addLog,
+            showToast
+          });
+          if (used) {
+            hand.splice(specialIdx, 1);
+            setAH([...hand]);
+            handleEnd();
+            setAiThinking(false);
+            return;
+          }
+        }
+
+
               
               if (Math.random() < 0.5) {
                 addLog('AI 選擇結束回合');
@@ -605,23 +735,22 @@ setTimeout(() => {
   setPH(h => h.filter((_, i) => !selEls.includes(i)));  // ⭐ 延後移除
 }, 800);  // ⏱️ 動畫結束時間
 
-        addLog(`合成 ${m.name}`);
 
 
-// 合成酸
-        
-if ((m.kind || '').includes('acid')) {
-  const corroded = corrodeMetals(aHand, setAH);
-  if (corroded > 0) addLog(`酸性分子腐蝕了敵方 ${corroded} 張金屬卡`);
-}        
-        // 傷害計算
-        const dmg = selEls.reduce((s, i) => s + (ELEMENTS.indexOf(pHand[i].el) + 1), 0);
-        applyDamage('ai', dmg);
-        // 合成水時立即回血
-        if (m.name === '水') {
-          triggerRecovery('player', '水', 'immediate');
-          showToast(`合成水，回復 ${RECOVER_CONFIG['水'].immediate} HP`);
-        }
+MoleculeOnCombine(m, {
+  sourceEls: selEls.map(i => pHand[i]),
+  userId: 'player',
+  opponentId: 'ai',
+  applyDamage,
+  addLog,
+  showToast,
+  triggerRecovery,
+  opponentHand: aHand,
+  setOpponentHand: setAH
+});
+
+
+
         setSelEls([]);
       };  
       const handleDiscard=()=>{if(turn!=='player'||gameOver)return; if(selEls.length<1){showToast('請選擇要棄牌');return;}if(selEls.length>3){showToast('最多棄牌三張');return;}const names=selEls.map(i=>pHand[i].el).join(',');setPH(h=>h.filter((_,i)=>!selEls.includes(i)));addLog(`棄牌: ${names}`);setSelEls([]);handleEnd();};  
@@ -733,34 +862,21 @@ const handleNeutralize = (myIndex, enemyIndex) => {
         } else if (selEls.length === 1) {
           const idx = selEls[0];
           const card = pHand[idx];
-          // 惰性氣體
-          if (card.usable) {
-            setPF((f) => [{ el: card.el, usable: true }, ...f]);
-            addLog(`使用 惰性氣體 ${card.el}`);
-            setPH((h) => h.filter((_, i) => i !== idx));
-          }
-          // 1A族引爆水
-          else if (ALKALI.includes(card.el) && hasWater) {
-            const waterCount = [...pField, ...aField].filter((mol) => mol.name === '水').length;
-            const atomNum = ELEMENTS.indexOf(card.el) + 1;
-            const waterMol = MOLECULES.find((m) => m.name === '水');
-            const waterAtomNum = Object.entries(waterMol.formula).reduce((s, [el, n]) => s + (ELEMENTS.indexOf(el) + 1) * n, 0);
-            const dmg = (atomNum + waterAtomNum) * waterCount;
-            showToast(`實驗室爆炸了！造成${dmg}點傷害`);
-            addLog(`實驗室爆炸了！造成${dmg}點傷害`);
-            applyDamage('ai', dmg);
-            // 消耗使用的元素牌
-            setPH((h) => h.filter((_, i) => i !== idx));
-            // 產生對應鹼性分子並移除所有水分子
-            const newMolName = card.el === 'Li' ? '氫氧化鋰' : card.el === 'Na' ? '氫氧化鈉' : '氫氧化鉀';
-            const newMol = MOLECULES.find((m) => m.name === newMolName);
-            setPF((f) => [newMol, ...f.filter((mol) => mol.name !== '水')] );
-            setAF((f) => f.filter((mol) => mol.name !== '水'));((f) => f.filter((mol) => mol.name !== '水'));
-          } else {
-            // 其他元素使用
-            addLog(`使用 元素 ${card.el}`);
-            setPH((h) => h.filter((_, i) => i !== idx));
-          }
+          // 使用任何元素卡
+        useElementCard(card, {
+  userId: 'player',
+  user: { field: pField },
+  setUserHand: setPH,
+  setUserField: setPF,
+  opponentField: aField,
+  setOpponentField: setAF,
+  applyDamage,
+  addLog,
+  showToast
+});
+
+            setPH(h => h.filter((_, i) => i !== idx));
+
           setSelEls([]);
         }
         // 結束玩家回合
@@ -806,7 +922,7 @@ const handleNeutralize = (myIndex, enemyIndex) => {
   <div className="hand enemy-hand">
 {aHand.map((c, i) => (
  <div key={i}
-  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${justDrawnIndices.includes(i) ? ' just-drawn' : ''}`}>
+  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${aJustDrawnIndices.includes(i) ? ' just-drawn' : ''}`}>
        <div className="symbol">{c.el}</div>
         <div className="number">{ELEMENTS.indexOf(c.el) + 1}</div>
         {c.usable && <div className="defense">防禦傷害</div>}
@@ -912,7 +1028,7 @@ const handleNeutralize = (myIndex, enemyIndex) => {
         
           <div className="hand">{pHand.map((c,i)=>
  <div key={i}
-  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${justDrawnIndices.includes(i) ? ' just-drawn' : ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}`}
+  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${pJustDrawnIndices.includes(i) ? ' just-drawn': ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}`}
   onClick={() => handleSelectEl(i)}>
             <div className="symbol">{c.el}</div>
             <div className="number">{ELEMENTS.indexOf(c.el)+1}</div>
@@ -939,5 +1055,6 @@ const handleNeutralize = (myIndex, enemyIndex) => {
   </script>
 </body>
 </html>
+
 
 
