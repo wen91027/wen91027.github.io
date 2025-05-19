@@ -77,6 +77,28 @@
         color: #ff6688; /* 比較偏粉紅紅色 */
         text-align: center;
       }
+    .card.molecule.alkali .alkali-info {
+        position: absolute;
+        bottom: 4px;
+        width: 100%;
+        font-size: 1em;
+        color: #66ccff; /* 比較偏藍色，代表鹼性 */
+        text-align: center;
+      }
+          .card.molecule.disabled {
+            opacity: 0.6;
+            filter: grayscale(1);
+          }
+    .card.molecule.disabled::after {
+        content: "變性";
+        position: absolute;
+        top: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.6em;
+        color: #ccc;
+      }
+
     
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
  
@@ -398,7 +420,7 @@ function useElementCard(card, {userId, user, setUserHand, setUserField,opponentF
   return true;
 }
 
-function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDamage, addLog, showToast,triggerRecovery
+function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDamage, addLog, showToast,triggerRecovery,setOpponentField
 }) {
   // 觸發腐蝕
   if ((molecule.kind || '').includes('acid')) {
@@ -418,10 +440,49 @@ function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDam
     showToast(`合成水，回復 ${RECOVER_CONFIG['水'].immediate} HP`);
   }
 
-  // 👉 你可於此擴充更多被動效果（如毒、燃燒等）
+  // 觸發變性
+if ((molecule.kind || '').includes('base')) {
+  const isStrong = (molecule.kind || '').includes('strong_base');
+  const count = isStrong ? 2 : 1;
+
+ setOpponentField(prev => {
+  const newField = [...prev];
+
+  const sorted = newField
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => !(m.kind || '').includes('acid') && !m.disabled)
+    .sort((a, b) => {
+      if (a.m.effect === 'recover' && b.m.effect !== 'recover') return -1;
+      if (a.m.effect !== 'recover' && b.m.effect === 'recover') return 1;
+      return 0;
+    });
+
+  const toDisable = sorted.slice(0, count);
+  toDisable.forEach(({ i }) => {
+    newField[i] = { ...newField[i], disabled: true };
+  });
+
+  if (toDisable.length > 0) {
+    addLog(`${isStrong ? '強鹼' : '鹼性分子'}變性了敵方 ${toDisable.length} 張分子`);
+  }
+
+  return newField;
+});
+
+
+  
 }
 
-    function MoleculeOnCombine(molecule, {sourceEls,userId,opponentId,applyDamage,addLog,showToast,triggerRecovery,opponentHand,setOpponentHand
+
+  
+  // 👉 你可於此擴充更多被動效果（如毒、燃燒等）
+
+
+  
+}
+
+    function MoleculeOnCombine(molecule, {sourceEls,userId,opponentId,applyDamage,addLog,showToast,triggerRecovery,opponentHand,setOpponentHand,
+  setOpponentField 
 }) {
   // 執行分子效果（腐蝕、水回復等）
   MoleculeEffect(molecule, {
@@ -431,7 +492,8 @@ function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDam
     applyDamage,
     addLog,
     showToast,
-    triggerRecovery
+    triggerRecovery,
+  setOpponentField 
   });
 
   // 合成造成基礎傷害（來自使用的原子序加總）
@@ -592,7 +654,8 @@ const indices = newCards.map((_, i) => startIndex + i);
               showToast,
               triggerRecovery,
               opponentHand: pHand,
-              setOpponentHand: setPH
+              setOpponentHand: setPH,
+                setOpponentField: setPF
             });
 
           
@@ -638,7 +701,8 @@ const indices = newCards.map((_, i) => startIndex + i);
             showToast,
             triggerRecovery,
             opponentHand: pHand,
-            setOpponentHand: setPH
+            setOpponentHand: setPH,
+                setOpponentField: setAF
           });
 
   
@@ -705,9 +769,12 @@ const indices = newCards.map((_, i) => startIndex + i);
 
           React.useEffect(()=>resetGame(),[]);
       React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} 
-                if (turn === 'player') {
+                
+                           //玩家回合
+                           if (turn === 'player') {
         const newHand = drawCardsTo(pHand, setPH, 2, '玩家');
-      
+
+                  //強酸持續腐蝕
         const hasStrongAcid = aField.some(m => (m.kind || '').includes('strong_acid'));
         if (hasStrongAcid) {
           const corroded = corrodeMetals(newHand, setPH, 1);
@@ -720,9 +787,29 @@ const indices = newCards.map((_, i) => startIndex + i);
             const heal = waterCount * RECOVER_CONFIG['水'].perTurn;
             setP(h=>Math.min(MAX_HP, h + heal));
             addLog(`每回合回復 ${heal} HP`);
-          }}
+          }
+
+                  //強鹼持續變性
+           const hasStrongBase = pField.some(m => (m.kind || '').includes('strong_base'));
+          if (hasStrongBase) {
+  setAF(prev => {
+    const newField = [...prev];
+    for (let i = 0; i < newField.length; i++) {
+      const m = newField[i];
+      if ((m.kind || '').includes('acid') || m.disabled) continue;
+      newField[i] = { ...m, disabled: true };
+      addLog(`強鹼持續變性了敵方 ${m.name}`);
+      break;
+    }
+    return newField;
+  });
+}
+
+                
+                }
       
                           },[turn,gameOver]);
+      
       React.useEffect(()=>{if(pHP<=0)setGameOver('lose');else if(aHP<=0)setGameOver('win');},[pHP,aHP]);  
       const applyDamage=(target,dmg)=>{let field=target==='player'?pField:aField;const setField=target==='player'?setPF:setAF;const setHp=target==='player'?setP:setA;const idx=field.findIndex(c=>c.usable);if(idx>=0){const card=field[idx];const block=ELEMENTS.indexOf(card.el)+1;showToast(`惰性氣體阻擋 ${block} 點傷害`);dmg=Math.max(0,dmg-block);setField(f=>f.filter((_,i)=>i!==idx));}setHp(h=>Math.max(0,h-dmg));};  
 
@@ -758,7 +845,8 @@ MoleculeOnCombine(m, {
   showToast,
   triggerRecovery,
   opponentHand: aHand,
-  setOpponentHand: setAH
+  setOpponentHand: setAH,
+  setOpponentField: setAF
 });
 
 
@@ -897,18 +985,33 @@ const handleNeutralize = (myIndex, enemyIndex) => {
       React.useEffect(() => {
   if (gameOver || turn !== 'ai') return;
 
-  const newHand = drawCardsTo(aHand, setAH, 2, 'AI');
-
- const hasStrongAcid = pField.some(m => (m.kind || '').includes('strong_acid'));
-if (hasStrongAcid) {
-  const corroded = corrodeMetals(newHand, setAH, 1);
-  if (corroded > 0) addLog(`你方強酸腐蝕敵方 ${corroded} 張金屬卡`);
-}
-
-
-  // 延遲執行行動（給 React 更新時間）
-  setTimeout(() => aiTakeAction(), 600);
-}, [turn, gameOver]);
+        const newHand = drawCardsTo(aHand, setAH, 2, 'AI');
+      //強酸持續
+       const hasStrongAcid = pField.some(m => (m.kind || '').includes('strong_acid'));
+      if (hasStrongAcid) {
+        const corroded = corrodeMetals(newHand, setAH, 1);
+        if (corroded > 0) addLog(`你方強酸腐蝕敵方 ${corroded} 張金屬卡`);
+      }
+      //強鹼持續
+              const hasStrongBase = aField.some(m => (m.kind || '').includes('strong_base'));
+      if (hasStrongBase) {
+        setPF(prev => {
+          const newField = [...prev];
+          for (let i = 0; i < newField.length; i++) {
+            const m = newField[i];
+            if ((m.kind || '').includes('acid') || m.disabled) continue;
+            newField[i] = { ...m, disabled: true };
+            addLog(`敵方強鹼持續變性了你方 ${m.name}`);
+            break;
+          }
+          return newField;
+        });
+      }
+      
+      
+        // 延遲執行行動（給 React 更新時間）
+        setTimeout(() => aiTakeAction(), 600);
+      }, [turn, gameOver]);
 
 
 
@@ -978,6 +1081,8 @@ if (hasStrongAcid) {
           ${(c.kind || '').includes('acid') ? 'acid' : ''} 
           ${(c.kind || '').includes('base') ? 'base' : ''} 
           ${c.usable ? 'inert' : ''}
+          ${c.disabled ? ' disabled' : ''}
+
           ${selEnemyMol === i ? ' selected' : ''}
           ${justCombinedId === c.id ? 'newly-created' : ''}
           
@@ -997,6 +1102,11 @@ if (hasStrongAcid) {
     {c.effect === 'corrosion' && (
       <div className="corrosion-info">腐蝕金屬</div>
     )}
+
+    {c.effect === 'alkali' && (
+    <div className="alkali-info">變性分子</div>
+  )}
+
   </div>
         )}</div></div>
 
@@ -1014,6 +1124,8 @@ if (hasStrongAcid) {
           ${(c.kind || '').includes('acid') ? 'acid' : ''} 
           ${(c.kind || '').includes('base') ? 'base' : ''} 
           ${c.usable ? 'inert' : ''}
+          ${c.disabled ? ' disabled' : ''}
+
           
           ${selMol === i ? ' selected' : ''}
           ${justCombinedId === c.id ? 'newly-created' : ''}
@@ -1033,6 +1145,9 @@ if (hasStrongAcid) {
         }
               {c.effect === 'corrosion' && (
     <div className="corrosion-info">腐蝕金屬</div>
+  )}
+             {c.effect === 'alkali' && (
+    <div className="alkali-info">變性分子</div>
   )}
             
           </div>
