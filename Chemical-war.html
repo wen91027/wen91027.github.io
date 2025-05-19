@@ -79,7 +79,19 @@
       }
     
     .card.molecule.selected { border:2px solid #0f0; box-shadow:0 0 6px #0f0; }
-        
+ 
+    .card.hint-glow {
+  border-color: #fff;
+  animation: hint-glow-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes hint-glow-pulse {
+  0%   { box-shadow: 0 0 0px rgba(255,255,255,0); }
+  50%  { box-shadow: 0 0 8px 3px rgba(255,255,255,0.5); }
+  100% { box-shadow: 0 0 0px rgba(255,255,255,0); }
+}
+
+
     .controls {
        width: 100%;
       display: flex;
@@ -390,9 +402,12 @@ function MoleculeEffect(molecule, {userId,opponentHand, setOpponentHand,applyDam
 }) {
   // 觸發腐蝕
   if ((molecule.kind || '').includes('acid')) {
-    const count = corrodeMetals(opponentHand, setOpponentHand);
-    if (count > 0) {
-      const msg = `${userId === 'player' ? '酸性分子腐蝕了敵方' : '敵方酸性分子腐蝕了你'} ${count} 張金屬卡`;
+    const isStrong = (molecule.kind || '').includes('strong_acid');
+    const corroded = corrodeMetals(opponentHand, setOpponentHand, 2); // ← 無論強酸或酸都腐蝕 2 張
+
+    if (corroded > 0) {
+      const label = isStrong ? '強酸' : '酸性分子';
+      const msg = `${userId === 'player' ? label + '腐蝕了敵方' : '敵方' + label + '腐蝕了你'} ${corroded} 張金屬卡`;
       addLog(msg);
     }
   }
@@ -567,18 +582,18 @@ const indices = newCards.map((_, i) => startIndex + i);
               setAF(f => [newMol, ...f]);
               addLog(`AI 合成 ${newMol.name}`);
 
-          
-  MoleculeOnCombine(newMol, {
-  sourceEls: used.map(el => ({ el })), // 模擬元素卡片格式
-  userId: 'ai',
-  opponentId: 'player',
-  applyDamage,
-  addLog,
-  showToast,
-  triggerRecovery,
-  opponentHand: pHand,
-  setOpponentHand: setPH
-});
+                      
+              MoleculeOnCombine(newMol, {
+              sourceEls: used.map(el => ({ el })), // 模擬元素卡片格式
+              userId: 'ai',
+              opponentId: 'player',
+              applyDamage,
+              addLog,
+              showToast,
+              triggerRecovery,
+              opponentHand: pHand,
+              setOpponentHand: setPH
+            });
 
           
               let continueAction = true;
@@ -690,17 +705,14 @@ const indices = newCards.map((_, i) => startIndex + i);
 
           React.useEffect(()=>resetGame(),[]);
       React.useEffect(()=>{if(gameOver) return; if(firstDraw.current){firstDraw.current=false;return;} 
-        if (turn === 'player') {
-const newHand = drawCardsTo(pHand, setPH, 2, '玩家');
-
-const acidCount = aField.filter(m => (m.kind || '').includes('acid')).length;
-const strongAcidCount = aField.filter(m => (m.kind || '').includes('strong_acid')).length;
-
-if (acidCount === 0) clearCorrosion(newHand, setPH);
-if (strongAcidCount > 0) {
-  const corroded = corrodeMetals(newHand, setPH, 1);
-  if (corroded > 0) addLog(`敵方強酸腐蝕了你 ${corroded} 張金屬卡`);
-}
+                if (turn === 'player') {
+        const newHand = drawCardsTo(pHand, setPH, 2, '玩家');
+      
+        const hasStrongAcid = aField.some(m => (m.kind || '').includes('strong_acid'));
+        if (hasStrongAcid) {
+          const corroded = corrodeMetals(newHand, setPH, 1);
+          if (corroded > 0) addLog(`敵方強酸腐蝕了你 ${corroded} 張金屬卡`);
+        }
 
           // 水分子每回合回復
           const waterCount = pField.filter(m => m.name==='水').length;
@@ -887,14 +899,12 @@ const handleNeutralize = (myIndex, enemyIndex) => {
 
   const newHand = drawCardsTo(aHand, setAH, 2, 'AI');
 
-  const acidCount = pField.filter(m => (m.kind || '').includes('acid')).length;
-  const strongAcidCount = pField.filter(m => (m.kind || '').includes('strong_acid')).length;
+ const hasStrongAcid = pField.some(m => (m.kind || '').includes('strong_acid'));
+if (hasStrongAcid) {
+  const corroded = corrodeMetals(newHand, setAH, 1);
+  if (corroded > 0) addLog(`你方強酸腐蝕敵方 ${corroded} 張金屬卡`);
+}
 
-  if (acidCount === 0) clearCorrosion(newHand, setAH);
-  if (strongAcidCount > 0) {
-    const corroded = corrodeMetals(newHand, setAH, 1);
-    if (corroded > 0) addLog(`你方強酸腐蝕了敵方 ${corroded} 張金屬卡`);
-  }
 
   // 延遲執行行動（給 React 更新時間）
   setTimeout(() => aiTakeAction(), 600);
@@ -902,7 +912,32 @@ const handleNeutralize = (myIndex, enemyIndex) => {
 
 
 
-      const possibleList=React.useMemo(()=>{const cnt={};pHand.forEach(c=>cnt[c.el]=(cnt[c.el]||0)+1);return MOLECULES.filter(m=>Object.entries(m.formula||{}).every(([el,n])=>cnt[el]>=n)).map(m=>`${m.name} (${Object.entries(m.formula).map(([el,n])=>n>1?`${n}${el}`:el).join(' + ')})`);},[pHand]);  
+ const possibleList = React.useMemo(() => {
+  const cnt = {};
+  pHand.filter(c => !c.corroded).forEach(c => {
+    cnt[c.el] = (cnt[c.el] || 0) + 1;
+  });
+
+  return MOLECULES.filter(m =>
+    Object.entries(m.formula || {}).every(([el, n]) => cnt[el] >= n)
+  ).map(m =>
+    `${m.name} (${Object.entries(m.formula).map(([el, n]) => n > 1 ? `${n}${el}` : el).join(' + ')})`
+  );
+}, [pHand]);
+
+      const hintElements = React.useMemo(() => {
+  const cnt = {};
+  pHand.filter(c => !c.corroded).forEach(c => cnt[c.el] = (cnt[c.el] || 0) + 1);
+
+
+  const hintSet = new Set();
+  MOLECULES.forEach(m => {
+    if (Object.entries(m.formula || {}).every(([el, n]) => cnt[el] >= n)) {
+      Object.keys(m.formula).forEach(el => hintSet.add(el));
+    }
+  });
+  return hintSet;
+}, [pHand]);
 
 
       //ui區域-----------------------------------------------
@@ -1028,7 +1063,8 @@ const handleNeutralize = (myIndex, enemyIndex) => {
         
           <div className="hand">{pHand.map((c,i)=>
  <div key={i}
-  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${pJustDrawnIndices.includes(i) ? ' just-drawn': ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}`}
+  className={`card element ${c.usable ? 'inert' : ''}${ALKALI.includes(c.el) ? ' alkali' : ''}${c.corroded ? ' corroded' : ''}${selEls.includes(i) ? ' selected' : ''}${pJustDrawnIndices.includes(i) ? ' just-drawn': ''}${justUsedIndices.includes(i) ? ' combine-out' : ''}${hintElements.has(c.el) ? ' hint-glow' : ''}
+`}
   onClick={() => handleSelectEl(i)}>
             <div className="symbol">{c.el}</div>
             <div className="number">{ELEMENTS.indexOf(c.el)+1}</div>
