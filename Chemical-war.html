@@ -451,7 +451,7 @@ if ((molecule.kind || '').includes('base')) {
   const sorted = newField
     .map((m, i) => ({ m, i }))
     .filter(({ m }) => 
-      !(m.kind || '').includes('acid') && 
+      !(m.kind || '').includes('acid') || 
       !(m.kind || '').includes('base') && 
       !m.disabled)
     
