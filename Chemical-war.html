@@ -450,7 +450,11 @@ if ((molecule.kind || '').includes('base')) {
 
   const sorted = newField
     .map((m, i) => ({ m, i }))
-    .filter(({ m }) => !(m.kind || '').includes('acid') && !m.disabled)
+    .filter(({ m }) => 
+      !(m.kind || '').includes('acid') && 
+      !(m.kind || '').includes('base') && 
+      !m.disabled)
+    
     .sort((a, b) => {
       if (a.m.effect === 'recover' && b.m.effect !== 'recover') return -1;
       if (a.m.effect !== 'recover' && b.m.effect === 'recover') return 1;
@@ -782,7 +786,7 @@ const indices = newCards.map((_, i) => startIndex + i);
         }
 
           // 水分子每回合回復
-          const waterCount = pField.filter(m => m.name==='水').length;
+          const waterCount = pField.filter(m => m.name==='水'&& !m.disabled).length;
           if(waterCount>0){
             const heal = waterCount * RECOVER_CONFIG['水'].perTurn;
             setP(h=>Math.min(MAX_HP, h + heal));
