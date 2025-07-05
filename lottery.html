@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>常活指南抽獎輪盤</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 30px; font-size: 18px; }
+    canvas {
+      border-radius: 50%;
+      border: 8px solid #333;
+      background-color: #fff;
+      position: relative;
+    }
+    #pointerCanvas {
+      position: absolute;
+      top: 250px;
+      left: 50%;
+      margin-left: 240px;
+      z-index: 10;
+    }
+    #winnerDisplay {
+      margin-top: 30px;
+      font-size: 36px;
+      color: #e74c3c;
+      font-weight: bold;
+      animation: pop 1s ease-in-out forwards;
+    }
+    #historyList {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    @keyframes pop {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 8px;
+      margin: 8px auto;
+      font-size: 18px;
+    }
+    #spinBtn, #buildBtn, #resetBtn {
+      margin-top: 10px;
+      padding: 12px 24px;
+      font-size: 18px;
+    }
+    #fixedInputContainer.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>🎁<span id="wheelTitle">常活指南抽獎輪盤</span></h2>
+
+  <div>
+    <input id="titleInput" type="text" placeholder="請輸入輪盤標題，例如 畢業典禮抽獎">
+    <input id="prizesInput" type="text" placeholder="請輸入抽獎名單，例如 小明,小華,小綠">
+    <br>
+    <div id="fixedInputContainer">
+      <input id="fixedInput" type="text" placeholder="請輸入中獎順序，用逗號分隔，例如 小華,小明,小綠">
+    </div>
+    <br>
+    <button id="buildBtn">建立輪盤</button>
+  </div>
+
+  <div style="position: relative; display: inline-block;">
+    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+    <canvas id="pointerCanvas" width="10" height="20"></canvas>
+  </div>
+  <button id="spinBtn" disabled>開始抽獎</button>
+
+  <div id="winnerDisplay"></div>
+  <div id="historyList"><strong>中獎紀錄：</strong><ul id="historyUl"></ul></div>
+  <button id="resetBtn" style="display:none">重新建立輪盤</button>
+
+  <audio id="spinSound" src="https://cdn.pixabay.com/audio/2022/03/16/audio_c0bbf1e6dc.mp3"></audio>
+  <audio id="winSound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_33f60b6f19.mp3"></audio>
+
+  <script>
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const pointerCanvas = document.getElementById("pointerCanvas");
+    const pointerCtx = pointerCanvas.getContext("2d");
+    const spinBtn = document.getElementById("spinBtn");
+    const buildBtn = document.getElementById("buildBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const winnerDisplay = document.getElementById("winnerDisplay");
+    const historyUl = document.getElementById("historyUl");
+    const fixedInputContainer = document.getElementById("fixedInputContainer");
+    const spinSound = document.getElementById("spinSound");
+    const winSound = document.getElementById("winSound");
+    const wheelTitle = document.getElementById("wheelTitle");
+
+    let prizes = [];
+    let fixedWinners = [];
+    let anglePerSlice = 0;
+    let currentAngle = 0;
+    let spinning = false;
+    let spinCount = 0;
+
+    function drawPointer() {
+      pointerCtx.clearRect(0, 0, 10, 20);
+      pointerCtx.beginPath();
+      pointerCtx.moveTo(0, 0);
+      pointerCtx.lineTo(10, 10);
+      pointerCtx.lineTo(0, 20);
+      pointerCtx.closePath();
+      pointerCtx.fillStyle = "red";
+      pointerCtx.fill();
+    }
+
+    function drawWheel(highlight = null, rotation = 0) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const radius = cx;
+
+      const colorSet = ["#f7c59f", "#c2f784", "#fbeec1", "#a0d2eb", "#f9a1bc"];
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotation);
+
+      for (let i = 0; i < prizes.length; i++) {
+        const startAngle = i * anglePerSlice;
+        const endAngle = startAngle + anglePerSlice;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, startAngle, endAngle);
+        ctx.fillStyle = colorSet[i % colorSet.length];
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.rotate(startAngle + anglePerSlice / 2);
+        ctx.textAlign = "right";
+        ctx.font = highlight === prizes[i] ? "bold 24px sans-serif" : "18px sans-serif";
+        ctx.fillStyle = highlight === prizes[i] ? "#e74c3c" : "#333";
+        ctx.fillText(prizes[i], radius - 10, 5);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    buildBtn.onclick = () => {
+      const titleInput = document.getElementById("titleInput").value.trim();
+      if (titleInput) wheelTitle.textContent = titleInput;
+
+      prizes = document.getElementById("prizesInput").value.split(',').map(s => s.trim()).filter(Boolean);
+      fixedWinners = document.getElementById("fixedInput").value.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (fixedWinners.length === 0 || prizes.length === 0) {
+        alert("請正確輸入抽獎名單與中獎順序");
+        return;
+      }
+
+      anglePerSlice = 2 * Math.PI / prizes.length;
+      currentAngle = 0;
+      drawWheel();
+      drawPointer();
+      spinBtn.disabled = false;
+      winnerDisplay.textContent = "";
+      fixedInputContainer.classList.add("hidden");
+      buildBtn.style.display = "none";
+      resetBtn.style.display = "inline-block";
+      historyUl.innerHTML = "";
+      spinCount = 0;
+    };
+
+    resetBtn.onclick = () => {
+      location.reload();
+    };
+
+    spinBtn.onclick = () => {
+      if (spinning || fixedWinners.length === 0 || prizes.length === 0) return;
+
+      const fixedPrize = fixedWinners.shift();
+      const index = prizes.indexOf(fixedPrize);
+      if (index === -1) {
+        alert(`找不到 ${fixedPrize}，可能已被抽過或名單有誤`);
+        return;
+      }
+
+      spinCount++;
+      const fullSpins = 10 + spinCount * 2;
+      const targetAngle = (2 * Math.PI - (index + 0.5) * anglePerSlice) + fullSpins * 2 * Math.PI;
+
+      let start = null;
+      let duration = 4000;
+      let startAngle = currentAngle % (2 * Math.PI);
+      let delta = targetAngle - currentAngle;
+      spinning = true;
+
+      spinSound.currentTime = 0;
+      spinSound.play();
+
+      function animate(timestamp) {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        currentAngle = startAngle + delta * easeOut(progress);
+        drawWheel(null, currentAngle);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          spinning = false;
+          drawWheel(fixedPrize, currentAngle);
+
+          spinSound.pause();
+          winSound.play();
+
+          winnerDisplay.style.animation = "none";
+          void winnerDisplay.offsetWidth;
+          winnerDisplay.style.animation = "pop 1s ease-in-out forwards";
+          winnerDisplay.textContent = `🎉 恭喜中獎：${fixedPrize}！`;
+
+          const li = document.createElement("li");
+          li.textContent = `🎯 ${fixedPrize}`;
+          historyUl.appendChild(li);
+
+          prizes.splice(index, 1);
+          anglePerSlice = 2 * Math.PI / prizes.length;
+
+          setTimeout(() => drawWheel(null, currentAngle), 3000);
+
+          if (fixedWinners.length === 0) {
+            spinBtn.disabled = true;
+          }
+        }
+      }
+
+      requestAnimationFrame(animate);
+    };
+
+    function easeOut(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+  </script>
+</body>
+</html>
