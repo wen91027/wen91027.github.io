@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安麗人脈組織雲端管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .node-green { border-left: 6px solid #22c55e; background-color: #f0fdf4; }
+        .node-orange { border-left: 6px solid #f97316; background-color: #fffaf5; }
+        .node-red { border-left: 6px solid #ef4444; background-color: #fef2f2; }
+        
+        .modal {
+            transition: opacity 0.2s ease;
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 50;
+            backdrop-filter: blur(2px);
+        }
+        .modal.active { display: flex; }
+
+        .sync-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-24">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-blue-700 text-white p-4 sticky top-0 shadow-lg z-40 flex justify-between items-center">
+        <div>
+            <h1 class="text-lg font-bold">Amway 組織雲端同步</h1>
+            <div id="statusLabel" class="text-[10px] flex items-center">
+                <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
+                <span id="statusText">初始化中...</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="fetchFromCloud()" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-full transition-transform active:scale-90" title="手動同步雲端">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
+            <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-transform">+ 新增頂層</button>
+        </div>
+    </header>
+
+    <!-- 組織樹狀圖容器 -->
+    <main id="network-container" class="p-4 space-y-3">
+        <div id="loading-placeholder" class="animate-pulse space-y-4">
+            <div class="h-16 bg-gray-200 rounded-xl"></div>
+            <div class="h-16 bg-gray-200 rounded-xl ml-6"></div>
+            <div class="h-16 bg-gray-200 rounded-xl ml-12"></div>
+        </div>
+    </main>
+
+    <!-- 編輯/詳情 Modal -->
+    <div id="editModal" class="modal items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h2 class="font-bold text-gray-700">夥伴詳細資訊</h2>
+                <button onclick="closeModal()" class="text-gray-400 text-2xl px-2">&times;</button>
+            </div>
+
+            <div class="overflow-y-auto p-5 space-y-6">
+                <!-- 基本資料 -->
+                <section class="space-y-4">
+                    <div class="flex gap-4 items-center">
+                        <div class="flex-1">
+                            <label class="text-xs font-bold text-gray-500 uppercase">狀態等級</label>
+                            <select id="editLevel" class="w-full mt-1 p-2 bg-white border border-gray-200 rounded-lg text-sm">
+                                <option value="distributor">直銷商 (綠色)</option>
+                                <option value="member">會員 (橘色)</option>
+                                <option value="lead">潛在客戶 (紅色)</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs font-bold text-gray-500 uppercase">姓名</label>
+                            <input type="text" id="editName" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">職業</label>
+                            <input type="text" id="editJob" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">地區</label>
+                            <input type="text" id="editLocation" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase">照片連結</label>
+                        <input type="text" id="editPhoto" placeholder="https://..." class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
+                    </div>
+                </section>
+
+                <section class="border-t pt-4">
+                    <label class="text-xs font-bold text-gray-500 uppercase">核心狀況描述</label>
+                    <textarea id="editStatus" rows="3" class="w-full mt-1 p-3 border border-gray-200 rounded-lg text-sm" placeholder="目前的經營或產品使用狀況..."></textarea>
+                </section>
+
+                <section class="border-t pt-4">
+                    <label class="text-xs font-bold text-gray-500 uppercase block mb-2">互動日記</label>
+                    <div id="journalList" class="space-y-2 mb-4"></div>
+                    <div class="bg-blue-50 p-3 rounded-xl space-y-2 border border-blue-100">
+                        <div class="flex gap-2">
+                            <input type="date" id="newJournalDate" class="p-2 border border-blue-200 rounded text-xs bg-white">
+                            <button onclick="addJournal()" class="flex-1 bg-blue-600 text-white rounded text-xs font-bold active:bg-blue-700 transition-colors">添加日記</button>
+                        </div>
+                        <input type="text" id="newJournalText" class="w-full p-2 border border-blue-200 rounded text-xs bg-white" placeholder="輸入互動摘要...">
+                    </div>
+                </section>
+            </div>
+
+            <div class="p-4 border-t bg-gray-50 flex gap-2">
+                <button onclick="saveChanges()" class="flex-1 bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-800 transition active:scale-95">儲存並同步</button>
+                <button onclick="handleDelete()" class="px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl transition">刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyZ75mgqzR-A_jwdfTd7nIViAnIMMlnbL_f6wP6iXGTYzgl-hM91gM_xJ58IyxRVnM/exec"; 
+
+        let networkData = [];
+        let currentEditId = null;
+
+        async function init() {
+            const localData = localStorage.getItem('amway_network_v3');
+            if (localData) {
+                try {
+                    networkData = JSON.parse(localData);
+                    renderNetwork();
+                    updateStatus("本地模式", "orange");
+                } catch(e) { 
+                    networkData = [];
+                }
+            }
+            
+            if (CLOUD_API_URL && CLOUD_API_URL.startsWith("https")) {
+                setTimeout(fetchFromCloud, 500);
+            } else {
+                updateStatus("API 未設定", "red");
+                if (!localData) renderNetwork(); 
+            }
+        }
+
+        function transformFlatToTree(flatData) {
+            if (!Array.isArray(flatData)) return [];
+            const map = {};
+            const roots = [];
+            
+            flatData.forEach(node => {
+                if (node && node.id) {
+                    let journals = [];
+                    if (typeof node.journals === 'string' && node.journals.trim() !== "") {
+                        try { journals = JSON.parse(node.journals); } catch(e) { journals = []; }
+                    } else if (Array.isArray(node.journals)) {
+                        journals = node.journals;
+                    }
+                    map[node.id] = { ...node, journals, children: [] };
+                }
+            });
+
+            flatData.forEach(node => {
+                if (node && node.id) {
+                    if (node.parentId && map[node.parentId]) {
+                        map[node.parentId].children.push(map[node.id]);
+                    } else {
+                        roots.push(map[node.id]);
+                    }
+                }
+            });
+            return roots;
+        }
+
+        function transformTreeToFlat(roots) {
+            const flat = [];
+            function traverse(node) {
+                const { children, ...data } = node;
+                const item = { ...data };
+                if (Array.isArray(item.journals)) {
+                    item.journals = JSON.stringify(item.journals);
+                }
+                flat.push(item);
+                if (children && children.length > 0) children.forEach(traverse);
+            }
+            roots.forEach(traverse);
+            return flat;
+        }
+
+        async function fetchFromCloud() {
+            if (!CLOUD_API_URL) return;
+            updateStatus("讀取雲端...", "blue", true);
+            
+            try {
+                // 使用快取清除參數
+                const fetchUrl = `${CLOUD_API_URL}?t=${Date.now()}`;
+                
+                // 增加逾時控制
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+                const response = await fetch(fetchUrl, {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                // 檢查是否成功連線
+                if (!response.ok) {
+                    throw new Error(`連線失敗 (HTTP ${response.status})`);
+                }
+
+                const text = await response.text();
+                
+                // 檢查內容是否為 JSON (防止 GAS 回傳 HTML 錯誤頁面)
+                try {
+                    const result = JSON.parse(text);
+                    if (Array.isArray(result)) {
+                        networkData = transformFlatToTree(result);
+                        saveToLocal();
+                        renderNetwork();
+                        updateStatus("同步成功", "green");
+                    } else {
+                        updateStatus("雲端資料格式錯誤", "red");
+                    }
+                } catch (parseError) {
+                    console.error("解析失敗，回傳內容可能是 HTML:", text);
+                    updateStatus("雲端回傳格式非 JSON", "red");
+                }
+
+            } catch (error) {
+                console.warn("Fetch 發生錯誤:", error);
+                if (error.name === 'AbortError') {
+                    updateStatus("雲端響應超時", "red");
+                } else {
+                    updateStatus("無法連線至雲端", "red");
+                }
+                if (networkData.length === 0) renderNetwork();
+            }
+        }
+
+        async function uploadToCloud() {
+            if (!CLOUD_API_URL) return;
+            updateStatus("同步中...", "blue", true);
+            
+            try {
+                const flatData = transformTreeToFlat(networkData);
+                
+                await fetch(CLOUD_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(flatData),
+                    mode: 'no-cors'
+                });
+                
+                setTimeout(() => {
+                    updateStatus("雲端更新成功", "green");
+                }, 1500);
+            } catch (error) {
+                updateStatus("更新失敗", "red");
+            }
+        }
+
+        function updateStatus(text, color, isSyncing = false) {
+            const dot = document.getElementById('statusDot');
+            const label = document.getElementById('statusText');
+            if (!dot || !label) return;
+            label.innerText = text;
+            const colors = { green: 'bg-green-500', blue: 'bg-blue-400', orange: 'bg-orange-500', red: 'bg-red-500' };
+            dot.className = `w-2 h-2 rounded-full mr-1 ${colors[color] || 'bg-gray-400'}`;
+            if (isSyncing) dot.classList.add('sync-pulse');
+            else dot.classList.remove('sync-pulse');
+        }
+
+        function saveToLocal() { localStorage.setItem('amway_network_v3', JSON.stringify(networkData)); }
+
+        function renderNetwork() {
+            const container = document.getElementById('network-container');
+            if (!container) return;
+            
+            if (!networkData || networkData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-24 border-2 border-dashed border-gray-200 rounded-3xl bg-white/50">
+                        <p class="text-gray-400 text-sm">目前沒有領袖夥伴</p>
+                        <p class="text-gray-300 text-[10px] mt-1">點擊上方「+ 新增頂層」開始建立組織</p>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            function buildHTML(node, depth = 0) {
+                const colorClass = node.level === 'distributor' ? 'node-green' : (node.level === 'member' ? 'node-orange' : 'node-red');
+                let html = `<div class="node-wrapper mb-3" style="margin-left: ${depth * 16}px">
+                    <div class="flex items-center p-3 rounded-xl shadow-sm border border-gray-100 ${colorClass} bg-white active:bg-gray-50 transition-all cursor-pointer">
+                        <div class="w-10 h-10 bg-slate-100 rounded-full overflow-hidden flex-shrink-0 border border-slate-200" onclick="openEditModal('${node.id}')">
+                            ${node.photo ? `<img src="${node.photo}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-[9px] font-bold">IMAGE</div>`}
+                        </div>
+                        <div class="ml-3 flex-1 min-w-0" onclick="openEditModal('${node.id}')">
+                            <h3 class="font-bold text-slate-800 text-sm truncate">${node.name || '未命名'}</h3>
+                            <p class="text-[10px] text-slate-400 truncate">${node.job || '職業未填'} · ${node.location || '地區未填'}</p>
+                        </div>
+                        <div class="flex items-center ml-2 border-l pl-2 border-slate-100">
+                            <button onclick="openAddModal('${node.id}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg active:scale-90 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach(child => { html += buildHTML(child, depth + 1); });
+                }
+                return html;
+            }
+
+            networkData.forEach(root => {
+                const div = document.createElement('div');
+                div.innerHTML = buildHTML(root);
+                container.appendChild(div);
+            });
+        }
+
+        function findNodeById(id, nodes = networkData) {
+            for (let node of nodes) {
+                if (node.id === id) return node;
+                if (node.children) {
+                    let found = findNodeById(id, node.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function openAddModal(parentId) {
+            const newId = 'id-' + Date.now();
+            const newNode = { 
+                id: newId, 
+                parentId: parentId, 
+                level: 'lead', 
+                name: '新夥伴', 
+                job: '', 
+                location: '', 
+                photo: '', 
+                status: '', 
+                journals: [], 
+                children: [] 
+            };
+            
+            if (parentId) {
+                const p = findNodeById(parentId);
+                if (p) {
+                    if (!p.children) p.children = [];
+                    p.children.push(newNode);
+                }
+            } else { 
+                networkData.push(newNode); 
+            }
+            saveToLocal(); 
+            renderNetwork(); 
+            openEditModal(newId);
+        }
+
+        function openEditModal(id) {
+            currentEditId = id;
+            const node = findNodeById(id);
+            if (!node) return;
+            
+            document.getElementById('editName').value = node.name || '';
+            document.getElementById('editLevel').value = node.level || 'lead';
+            document.getElementById('editJob').value = node.job || '';
+            document.getElementById('editLocation').value = node.location || '';
+            document.getElementById('editPhoto').value = node.photo || '';
+            document.getElementById('editStatus').value = node.status || '';
+            
+            renderJournals(node.journals || []);
+            document.getElementById('editModal').classList.add('active');
+            document.getElementById('newJournalDate').valueAsDate = new Date();
+        }
+
+        function renderJournals(journals) {
+            const list = document.getElementById('journalList');
+            list.innerHTML = '';
+            const sorted = [...journals].sort((a,b) => new Date(b.date) - new Date(a.date));
+            if (sorted.length === 0) {
+                list.innerHTML = `<p class="text-[10px] text-gray-400 italic text-center py-2">尚無互動紀錄</p>`;
+                return;
+            }
+            sorted.forEach((j) => {
+                const div = document.createElement('div');
+                div.className = 'bg-white p-2 rounded border border-gray-100 text-[11px] shadow-sm mb-1';
+                div.innerHTML = `<div><span class="font-bold text-blue-600">${j.date}</span>: ${j.text}</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function addJournal() {
+            const text = document.getElementById('newJournalText').value;
+            const date = document.getElementById('newJournalDate').value;
+            if(!text || !currentEditId) return;
+            const node = findNodeById(currentEditId);
+            if(!node.journals) node.journals = [];
+            node.journals.push({ date, text });
+            document.getElementById('newJournalText').value = '';
+            renderJournals(node.journals);
+        }
+
+        async function saveChanges() {
+            const node = findNodeById(currentEditId);
+            if (node) {
+                node.name = document.getElementById('editName').value;
+                node.level = document.getElementById('editLevel').value;
+                node.job = document.getElementById('editJob').value;
+                node.location = document.getElementById('editLocation').value;
+                node.photo = document.getElementById('editPhoto').value;
+                node.status = document.getElementById('editStatus').value;
+                saveToLocal(); 
+                renderNetwork(); 
+                closeModal();
+                await uploadToCloud();
+            }
+        }
+
+        async function handleDelete() {
+            if (!confirm('確定要刪除這位夥伴以及其所有下線組織嗎？此動作不可撤銷。')) return;
+            const deleteRecursive = (list, targetId) => {
+                for (let i = 0; i < list.length; i++) {
+                    if (list[i].id === targetId) { list.splice(i, 1); return true; }
+                    if (list[i].children && deleteRecursive(list[i].children, targetId)) return true;
+                }
+                return false;
+            };
+            deleteRecursive(networkData, currentEditId);
+            saveToLocal(); 
+            renderNetwork(); 
+            closeModal();
+            await uploadToCloud();
+        }
+
+        function closeModal() { 
+            document.getElementById('editModal').classList.remove('active'); 
+            currentEditId = null;
+        }
+
+        init();
+    </script>
+</body>
+</html>
