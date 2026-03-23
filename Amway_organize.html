@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>安麗人脈組織雲端管理</title>
+    <title>我的組織網</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .node-green { border-left: 6px solid #22c55e; background-color: #f0fdf4; }
-        .node-orange { border-left: 6px solid #f97316; background-color: #fffaf5; }
-        .node-red { border-left: 6px solid #ef4444; background-color: #fef2f2; }
+        /* 等級樣式：外框與背景 */
+        .node-distributor { border: 2px solid #22c55e; background-color: #f0fdf4; }
+        .node-member { border: 2px solid #f97316; background-color: #fffaf5; }
+        .node-lead { border: 2px solid #ef4444; background-color: #fef2f2; }
         
         .modal {
             transition: opacity 0.2s ease;
@@ -31,26 +32,76 @@
             0%, 100% { opacity: 1; }
             50% { opacity: .5; }
         }
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 收合動畫 */
+        .collapse-transition {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+        }
+        .rotated {
+            transform: rotate(-90deg);
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-24">
 
     <!-- 頂部導覽列 -->
-    <header class="bg-blue-700 text-white p-4 sticky top-0 shadow-lg z-40 flex justify-between items-center">
-        <div>
-            <h1 class="text-lg font-bold">Amway 組織雲端同步</h1>
-            <div id="statusLabel" class="text-[10px] flex items-center">
-                <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
-                <span id="statusText">初始化中...</span>
+    <header class="bg-blue-700 text-white p-4 sticky top-0 shadow-lg z-40">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <h1 class="text-lg font-bold">Amway我的組織網</h1>
+                <div id="statusLabel" class="text-[10px] flex items-center">
+                    <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
+                    <span id="statusText">初始化中...</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="fetchFromCloud()" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-full transition-transform active:scale-90" title="手動同步雲端">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+                <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-transform">+ 新增頂層</button>
             </div>
         </div>
-        <div class="flex gap-2">
-            <button onclick="fetchFromCloud()" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-full transition-transform active:scale-90" title="手動同步雲端">
+        
+        <!-- 地點篩選列 -->
+        <div class="relative mt-2">
+            <input type="text" id="locationSearch" oninput="handleSearch()" placeholder="🔍 輸入地點篩選 (如：台北)..." 
+                class="w-full p-2 pl-9 rounded-lg bg-blue-800 border-none text-sm text-white placeholder-blue-300 focus:ring-2 focus:ring-blue-400 outline-none shadow-inner">
+            <div class="absolute left-3 top-2.5 text-blue-300">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-            </button>
-            <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-transform">+ 新增頂層</button>
+            </div>
+        </div>
+
+        <!-- 統計數據列 -->
+        <div id="statsBar" class="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div class="bg-blue-800/50 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-blue-600/30">
+                <span class="text-[10px] text-blue-200">小組總計</span>
+                <span id="totalGroupCount" class="text-sm font-bold">0</span>
+            </div>
+            <div class="bg-green-600/20 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-green-500/30">
+                <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                <span class="text-[10px] text-green-100">直銷商</span>
+                <span id="distributorCount" class="text-sm font-bold">0</span>
+            </div>
+            <div class="bg-orange-600/20 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-orange-500/30">
+                <div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div>
+                <span class="text-[10px] text-orange-100">會員</span>
+                <span id="memberCount" class="text-sm font-bold">0</span>
+            </div>
         </div>
     </header>
 
@@ -100,9 +151,20 @@
                         </div>
                     </div>
 
+                    <!-- 照片上傳區 -->
                     <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">照片連結</label>
-                        <input type="text" id="editPhoto" placeholder="https://..." class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
+                        <label class="text-xs font-bold text-gray-500 uppercase">照片設置</label>
+                        <div class="mt-1 flex items-center gap-3">
+                            <div id="photoPreview" class="w-12 h-12 rounded-full bg-gray-100 border overflow-hidden flex-shrink-0">
+                                <img id="editPhotoImg" src="" class="w-full h-full object-cover hidden">
+                                <div id="photoPlaceholder" class="w-full h-full flex items-center justify-center text-[8px] text-gray-400">無圖</div>
+                            </div>
+                            <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="uploadToGitHub(this)">
+                            <button id="uploadBtn" onclick="document.getElementById('photoInput').click()" class="flex-1 py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition">
+                                點擊上傳照片至 GitHub
+                            </button>
+                        </div>
+                        <input type="hidden" id="editPhotoUrl">
                     </div>
                 </section>
 
@@ -132,73 +194,123 @@
     </div>
 
     <script>
-        // Google Apps Script 網頁應用程式網址
+        // --- 設定區 ---
         const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyZ75mgqzR-A_jwdfTd7nIViAnIMMlnbL_f6wP6iXGTYzgl-hM91gM_xJ58IyxRVnM/exec"; 
+        
+        // GitHub 設定
+        const GITHUB_CONFIG = {
+            token: "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", 
+            owner: "wen91027", 
+            repo: "amway-photos", 
+            path: "avatars"
+        };
 
         let networkData = [];
         let currentEditId = null;
+        let collapsedState = {}; 
+        let currentFilter = ""; // 當前地點關鍵字
 
         async function init() {
-            // 優先讀取本地快取
             const localData = localStorage.getItem('amway_network_v3');
             if (localData) {
                 try {
                     networkData = JSON.parse(localData);
                     renderNetwork();
                     updateStatus("本地模式", "orange");
-                } catch(e) { 
-                    networkData = [];
-                }
+                } catch(e) { networkData = []; }
             }
-            
-            // 嘗試雲端抓取
             if (CLOUD_API_URL && CLOUD_API_URL.startsWith("https")) {
                 setTimeout(fetchFromCloud, 800);
-            } else {
-                updateStatus("API 未設定", "red");
-                if (!localData) renderNetwork(); 
             }
         }
 
-        // 扁平轉樹狀
+        // --- 搜尋處理 ---
+        function handleSearch() {
+            currentFilter = document.getElementById('locationSearch').value.trim();
+            renderNetwork();
+        }
+
+        // --- GitHub 上傳功能 ---
+        async function uploadToGitHub(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const btn = document.getElementById('uploadBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="loader"></span> 上傳中...`;
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const content = e.target.result.split(',')[1];
+                    const fileName = `img_${Date.now()}.jpg`;
+                    const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}/${fileName}`;
+
+                    const res = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${GITHUB_CONFIG.token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: `Upload: ${fileName}`,
+                            content: content
+                        })
+                    });
+
+                    if (res.ok) {
+                        const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/master/${GITHUB_CONFIG.path}/${fileName}`;
+                        document.getElementById('editPhotoUrl').value = rawUrl;
+                        const img = document.getElementById('editPhotoImg');
+                        img.src = rawUrl;
+                        img.classList.remove('hidden');
+                        document.getElementById('photoPlaceholder').classList.add('hidden');
+                        btn.innerText = "上傳成功";
+                    } else {
+                        const errData = await res.json();
+                        throw new Error(errData.message || "GitHub 回傳錯誤");
+                    }
+                };
+                reader.readAsDataURL(file);
+            } catch (err) {
+                alert("GitHub 上傳失敗：" + err.message);
+                btn.innerText = originalText;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // --- 同步與渲染邏輯 ---
         function transformFlatToTree(flatData) {
             if (!Array.isArray(flatData)) return [];
             const map = {};
             const roots = [];
-            
             flatData.forEach(node => {
                 if (node && node.id) {
                     let journals = [];
                     if (typeof node.journals === 'string' && node.journals.trim() !== "") {
                         try { journals = JSON.parse(node.journals); } catch(e) { journals = []; }
-                    } else if (Array.isArray(node.journals)) {
-                        journals = node.journals;
-                    }
+                    } else if (Array.isArray(node.journals)) { journals = node.journals; }
                     map[node.id] = { ...node, journals, children: [] };
                 }
             });
-
             flatData.forEach(node => {
                 if (node && node.id) {
                     if (node.parentId && map[node.parentId]) {
                         map[node.parentId].children.push(map[node.id]);
-                    } else {
-                        roots.push(map[node.id]);
-                    }
+                    } else { roots.push(map[node.id]); }
                 }
             });
             return roots;
         }
 
-        // 樹狀轉扁平
         function transformTreeToFlat(roots) {
             const flat = [];
             function traverse(node) {
                 const { children, ...data } = node;
                 const item = { ...data };
-                if (Array.isArray(item.journals)) {
-                    item.journals = JSON.stringify(item.journals);
-                }
+                if (Array.isArray(item.journals)) item.journals = JSON.stringify(item.journals);
                 flat.push(item);
                 if (children && children.length > 0) children.forEach(traverse);
             }
@@ -209,75 +321,33 @@
         async function fetchFromCloud() {
             if (!CLOUD_API_URL) return;
             updateStatus("同步雲端...", "blue", true);
-            
             try {
-                const fetchUrl = `${CLOUD_API_URL}?t=${Date.now()}`;
-                
-                // 增加更多的 fetch 選項來處理 Google 重定向
-                const response = await fetch(fetchUrl, {
-                    method: 'GET',
-                    mode: 'cors',
-                    cache: 'no-cache',
-                    redirect: 'follow'
-                });
-
-                if (!response.ok) throw new Error("API 響應異常: " + response.status);
-
+                const response = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, { redirect: 'follow' });
                 const text = await response.text();
-                
-                if (!text || text.trim() === "") {
-                    console.warn("雲端為空內容");
-                    updateStatus("雲端無資料", "orange");
-                    return;
-                }
-
-                try {
-                    const result = JSON.parse(text);
-                    if (Array.isArray(result)) {
-                        networkData = transformFlatToTree(result);
-                        saveToLocal();
-                        renderNetwork();
-                        updateStatus("同步成功", "green");
-                    } else {
-                        updateStatus("資料格式不正確", "red");
-                    }
-                } catch (e) {
-                    // 如果解析失敗，檢查是不是回傳了 HTML (可能是 Google 錯誤頁面)
-                    if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
-                        console.error("收到 HTML 而非 JSON。請檢查 GAS 權限或腳本內容。");
-                        updateStatus("雲端權限或腳本錯誤", "red");
-                    } else {
-                        console.error("無法解析內容為 JSON:", text);
-                        updateStatus("內容解析失敗", "red");
-                    }
+                const result = JSON.parse(text);
+                if (Array.isArray(result)) {
+                    networkData = transformFlatToTree(result);
+                    saveToLocal();
+                    renderNetwork();
+                    updateStatus("同步成功", "green");
                 }
             } catch (error) {
-                console.warn("雲端讀取異常:", error);
-                updateStatus("無法連線雲端", "red");
-                if (networkData.length === 0) renderNetwork();
+                updateStatus("同步失敗", "red");
             }
         }
 
         async function uploadToCloud() {
             if (!CLOUD_API_URL) return;
             updateStatus("上傳中...", "blue", true);
-            
             try {
                 const flatData = transformTreeToFlat(networkData);
-                
                 await fetch(CLOUD_API_URL, {
                     method: 'POST',
                     body: JSON.stringify(flatData),
                     mode: 'no-cors' 
                 });
-                
-                // no-cors 下無法讀取 response，所以設定延遲提示
-                setTimeout(() => {
-                    updateStatus("雲端已更新", "green");
-                }, 1500);
-            } catch (error) {
-                updateStatus("更新失敗", "red");
-            }
+                setTimeout(() => { updateStatus("雲端已更新", "green"); }, 1500);
+            } catch (error) { updateStatus("連線失敗", "red"); }
         }
 
         function updateStatus(text, color, isSyncing = false) {
@@ -293,52 +363,94 @@
 
         function saveToLocal() { localStorage.setItem('amway_network_v3', JSON.stringify(networkData)); }
 
+        function toggleCollapse(id) {
+            collapsedState[id] = !collapsedState[id];
+            renderNetwork();
+        }
+
         function renderNetwork() {
             const container = document.getElementById('network-container');
-            if (!container) return;
+            if (!container || !networkData) return;
+            container.innerHTML = networkData.length === 0 ? `<div class="text-center py-24 text-gray-400">目前沒有夥伴</div>` : '';
             
-            if (!networkData || networkData.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-24 border-2 border-dashed border-gray-200 rounded-3xl bg-white/50">
-                        <p class="text-gray-400 text-sm">目前沒有領袖夥伴</p>
-                        <p class="text-gray-300 text-[10px] mt-1">點擊上方「+ 新增頂層」開始建立組織</p>
-                    </div>`;
-                return;
-            }
-            
-            container.innerHTML = '';
-            
+            // 歸零統計
+            let stats = { distributor: 0, member: 0 };
+
             function buildHTML(node, depth = 0) {
-                const colorClass = node.level === 'distributor' ? 'node-green' : (node.level === 'member' ? 'node-orange' : 'node-red');
-                let html = `<div class="node-wrapper mb-3" style="margin-left: ${depth * 16}px">
-                    <div class="flex items-center p-3 rounded-xl shadow-sm border border-gray-100 ${colorClass} bg-white active:bg-gray-50 transition-all cursor-pointer">
-                        <div class="w-10 h-10 bg-slate-100 rounded-full overflow-hidden flex-shrink-0 border border-slate-200" onclick="openEditModal('${node.id}')">
+                const isMatched = currentFilter === "" || (node.location && node.location.includes(currentFilter));
+                
+                let hasMatchedDescendant = false;
+                const checkDescendantMatch = (n) => {
+                    if (n.location && n.location.includes(currentFilter)) return true;
+                    if (n.children) return n.children.some(checkDescendantMatch);
+                    return false;
+                }
+                
+                if (currentFilter !== "" && !isMatched && !checkDescendantMatch(node)) return "";
+
+                // 計算統計 (僅統計篩選結果中顯示的 node)
+                if (isMatched || currentFilter === "") {
+                    if (node.level === 'distributor') stats.distributor++;
+                    else if (node.level === 'member') stats.member++;
+                }
+
+                const colorClass = node.level === 'distributor' ? 'node-distributor' : (node.level === 'member' ? 'node-member' : 'node-lead');
+                const hasChildren = node.children && node.children.length > 0;
+                const isCollapsed = currentFilter !== "" ? false : collapsedState[node.id];
+
+                let html = `<div class="node-wrapper mb-3" style="margin-left: ${depth * 20}px">
+                    <div class="flex items-center p-3 rounded-xl shadow-md ${colorClass} active:scale-[0.98] transition-all cursor-pointer ${!isMatched && currentFilter !== "" ? 'opacity-40 grayscale-[0.5]' : ''}">
+                        
+                        <div class="flex-shrink-0 mr-1 w-6 h-6 flex items-center justify-center" onclick="event.stopPropagation(); toggleCollapse('${node.id}')">
+                            ${(hasChildren && currentFilter === "") ? `
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform ${isCollapsed ? 'rotated' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            ` : (currentFilter !== "" && hasChildren ? '<div class="w-1 h-1 bg-gray-300 rounded-full"></div>' : '')}
+                        </div>
+
+                        <div class="w-10 h-10 bg-white rounded-full overflow-hidden flex-shrink-0 border border-slate-200" onclick="openEditModal('${node.id}')">
                             ${node.photo ? `<img src="${node.photo}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-[9px] font-bold">IMAGE</div>`}
                         </div>
+
                         <div class="ml-3 flex-1 min-w-0" onclick="openEditModal('${node.id}')">
                             <h3 class="font-bold text-slate-800 text-sm truncate">${node.name || '未命名'}</h3>
-                            <p class="text-[10px] text-slate-400 truncate">${node.job || '職業未填'} · ${node.location || '地區未填'}</p>
+                            <p class="text-[10px] text-slate-500 font-medium truncate">${node.job || '職業未填'} · <span class="${isMatched && currentFilter !== "" ? 'text-blue-600 font-bold bg-blue-50 px-1 rounded' : ''}">${node.location || '地區未填'}</span></p>
                         </div>
-                        <div class="flex items-center ml-2 border-l pl-2 border-slate-100">
-                            <button onclick="openAddModal('${node.id}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg active:scale-90 transition-transform">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-                                </svg>
+
+                        <div class="flex items-center ml-2 border-l pl-2 border-slate-200">
+                            <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg active:scale-90 transition-transform">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                             </button>
                         </div>
                     </div>
                 </div>`;
-                if (node.children && node.children.length > 0) {
-                    node.children.forEach(child => { html += buildHTML(child, depth + 1); });
+
+                if (hasChildren && !isCollapsed) {
+                    node.children.forEach(child => { 
+                        html += buildHTML(child, depth + 1); 
+                    });
                 }
                 return html;
             }
 
             networkData.forEach(root => {
-                const div = document.createElement('div');
-                div.innerHTML = buildHTML(root);
-                container.appendChild(div);
+                const res = buildHTML(root);
+                if (res) {
+                    const div = document.createElement('div');
+                    div.innerHTML = res;
+                    container.appendChild(div);
+                }
             });
+            
+            // 更新統計 UI
+            document.getElementById('distributorCount').innerText = stats.distributor;
+            document.getElementById('memberCount').innerText = stats.member;
+            document.getElementById('totalGroupCount').innerText = stats.distributor + stats.member;
+
+            if (container.innerHTML === "" && currentFilter !== "") {
+                container.innerHTML = `<div class="text-center py-24 text-gray-400">找不到包含「${currentFilter}」的地點</div>`;
+            }
         }
 
         function findNodeById(id, nodes = networkData) {
@@ -354,31 +466,15 @@
 
         function openAddModal(parentId) {
             const newId = 'id-' + Date.now();
-            const newNode = { 
-                id: newId, 
-                parentId: parentId, 
-                level: 'lead', 
-                name: '新夥伴', 
-                job: '', 
-                location: '', 
-                photo: '', 
-                status: '', 
-                journals: [], 
-                children: [] 
-            };
-            
+            const newNode = { id: newId, parentId: parentId, level: 'lead', name: '新夥伴', job: '', location: '', photo: '', status: '', journals: [], children: [] };
             if (parentId) {
                 const p = findNodeById(parentId);
                 if (p) {
-                    if (!p.children) p.children = [];
                     p.children.push(newNode);
+                    collapsedState[parentId] = false; 
                 }
-            } else { 
-                networkData.push(newNode); 
-            }
-            saveToLocal(); 
-            renderNetwork(); 
-            openEditModal(newId);
+            } else { networkData.push(newNode); }
+            saveToLocal(); renderNetwork(); openEditModal(newId);
         }
 
         function openEditModal(id) {
@@ -390,8 +486,22 @@
             document.getElementById('editLevel').value = node.level || 'lead';
             document.getElementById('editJob').value = node.job || '';
             document.getElementById('editLocation').value = node.location || '';
-            document.getElementById('editPhoto').value = node.photo || '';
+            document.getElementById('editPhotoUrl').value = node.photo || '';
             document.getElementById('editStatus').value = node.status || '';
+            
+            const img = document.getElementById('editPhotoImg');
+            const placeholder = document.getElementById('photoPlaceholder');
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.innerText = "點擊上傳照片至 GitHub";
+
+            if (node.photo) {
+                img.src = node.photo;
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
             
             renderJournals(node.journals || []);
             document.getElementById('editModal').classList.add('active');
@@ -432,17 +542,15 @@
                 node.level = document.getElementById('editLevel').value;
                 node.job = document.getElementById('editJob').value;
                 node.location = document.getElementById('editLocation').value;
-                node.photo = document.getElementById('editPhoto').value;
+                node.photo = document.getElementById('editPhotoUrl').value;
                 node.status = document.getElementById('editStatus').value;
-                saveToLocal(); 
-                renderNetwork(); 
-                closeModal();
+                saveToLocal(); renderNetwork(); closeModal();
                 await uploadToCloud();
             }
         }
 
         async function handleDelete() {
-            if (!confirm('確定要刪除這位夥伴以及其所有下線組織嗎？此動作不可撤銷。')) return;
+            if (!confirm('確定刪除？')) return;
             const deleteRecursive = (list, targetId) => {
                 for (let i = 0; i < list.length; i++) {
                     if (list[i].id === targetId) { list.splice(i, 1); return true; }
@@ -451,16 +559,11 @@
                 return false;
             };
             deleteRecursive(networkData, currentEditId);
-            saveToLocal(); 
-            renderNetwork(); 
-            closeModal();
+            saveToLocal(); renderNetwork(); closeModal();
             await uploadToCloud();
         }
 
-        function closeModal() { 
-            document.getElementById('editModal').classList.remove('active'); 
-            currentEditId = null;
-        }
+        function closeModal() { document.getElementById('editModal').classList.remove('active'); currentEditId = null; }
 
         init();
     </script>
