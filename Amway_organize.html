@@ -132,12 +132,14 @@
     </div>
 
     <script>
+        // Google Apps Script 網頁應用程式網址
         const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyZ75mgqzR-A_jwdfTd7nIViAnIMMlnbL_f6wP6iXGTYzgl-hM91gM_xJ58IyxRVnM/exec"; 
 
         let networkData = [];
         let currentEditId = null;
 
         async function init() {
+            // 優先讀取本地快取
             const localData = localStorage.getItem('amway_network_v3');
             if (localData) {
                 try {
@@ -149,14 +151,16 @@
                 }
             }
             
+            // 嘗試雲端抓取
             if (CLOUD_API_URL && CLOUD_API_URL.startsWith("https")) {
-                setTimeout(fetchFromCloud, 500);
+                setTimeout(fetchFromCloud, 800);
             } else {
                 updateStatus("API 未設定", "red");
                 if (!localData) renderNetwork(); 
             }
         }
 
+        // 扁平轉樹狀
         function transformFlatToTree(flatData) {
             if (!Array.isArray(flatData)) return [];
             const map = {};
@@ -186,6 +190,7 @@
             return roots;
         }
 
+        // 樹狀轉扁平
         function transformTreeToFlat(roots) {
             const flat = [];
             function traverse(node) {
@@ -203,31 +208,29 @@
 
         async function fetchFromCloud() {
             if (!CLOUD_API_URL) return;
-            updateStatus("讀取雲端...", "blue", true);
+            updateStatus("同步雲端...", "blue", true);
             
             try {
-                // 使用快取清除參數
                 const fetchUrl = `${CLOUD_API_URL}?t=${Date.now()}`;
                 
-                // 增加逾時控制
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-
+                // 增加更多的 fetch 選項來處理 Google 重定向
                 const response = await fetch(fetchUrl, {
                     method: 'GET',
-                    signal: controller.signal
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    redirect: 'follow'
                 });
 
-                clearTimeout(timeoutId);
-
-                // 檢查是否成功連線
-                if (!response.ok) {
-                    throw new Error(`連線失敗 (HTTP ${response.status})`);
-                }
+                if (!response.ok) throw new Error("API 響應異常: " + response.status);
 
                 const text = await response.text();
                 
-                // 檢查內容是否為 JSON (防止 GAS 回傳 HTML 錯誤頁面)
+                if (!text || text.trim() === "") {
+                    console.warn("雲端為空內容");
+                    updateStatus("雲端無資料", "orange");
+                    return;
+                }
+
                 try {
                     const result = JSON.parse(text);
                     if (Array.isArray(result)) {
@@ -236,27 +239,28 @@
                         renderNetwork();
                         updateStatus("同步成功", "green");
                     } else {
-                        updateStatus("雲端資料格式錯誤", "red");
+                        updateStatus("資料格式不正確", "red");
                     }
-                } catch (parseError) {
-                    console.error("解析失敗，回傳內容可能是 HTML:", text);
-                    updateStatus("雲端回傳格式非 JSON", "red");
+                } catch (e) {
+                    // 如果解析失敗，檢查是不是回傳了 HTML (可能是 Google 錯誤頁面)
+                    if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
+                        console.error("收到 HTML 而非 JSON。請檢查 GAS 權限或腳本內容。");
+                        updateStatus("雲端權限或腳本錯誤", "red");
+                    } else {
+                        console.error("無法解析內容為 JSON:", text);
+                        updateStatus("內容解析失敗", "red");
+                    }
                 }
-
             } catch (error) {
-                console.warn("Fetch 發生錯誤:", error);
-                if (error.name === 'AbortError') {
-                    updateStatus("雲端響應超時", "red");
-                } else {
-                    updateStatus("無法連線至雲端", "red");
-                }
+                console.warn("雲端讀取異常:", error);
+                updateStatus("無法連線雲端", "red");
                 if (networkData.length === 0) renderNetwork();
             }
         }
 
         async function uploadToCloud() {
             if (!CLOUD_API_URL) return;
-            updateStatus("同步中...", "blue", true);
+            updateStatus("上傳中...", "blue", true);
             
             try {
                 const flatData = transformTreeToFlat(networkData);
@@ -264,11 +268,12 @@
                 await fetch(CLOUD_API_URL, {
                     method: 'POST',
                     body: JSON.stringify(flatData),
-                    mode: 'no-cors'
+                    mode: 'no-cors' 
                 });
                 
+                // no-cors 下無法讀取 response，所以設定延遲提示
                 setTimeout(() => {
-                    updateStatus("雲端更新成功", "green");
+                    updateStatus("雲端已更新", "green");
                 }, 1500);
             } catch (error) {
                 updateStatus("更新失敗", "red");
