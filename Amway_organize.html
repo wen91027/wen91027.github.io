@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安麗組織管理系統</title>
+    <title>安麗組織管理系統 - 高速版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal {
@@ -16,7 +16,6 @@
             backdrop-filter: blur(4px);
         }
         .modal.active { display: flex; }
-        
         .tree-line {
             position: absolute;
             left: -18px; top: -12px; bottom: 20px;
@@ -31,13 +30,15 @@
         .rotate-90 { transform: rotate(90deg); }
         .transition-transform { transition: transform 0.2s ease; }
         
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .sync-pulse { animation: pulse 2s infinite; }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .syncing-icon { animation: spin-slow 1s linear infinite; }
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .sync-pending { animation: pulse-soft 2s infinite; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
 
-    <!-- 登入介面 -->
+    <!-- 登入介面 (保持不變) -->
     <div id="loginModal" class="modal items-center justify-center p-6" style="display: flex;">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border border-slate-100">
             <div class="mb-4 flex justify-center">
@@ -46,19 +47,24 @@
                 </div>
             </div>
             <h2 class="text-xl font-bold mb-2">管理員登入</h2>
-            <p class="text-xs text-slate-400 mb-6">請輸入經營編號</p>
-            <input type="text" id="accountInput" placeholder="例如: 9314616" 
+            <p class="text-[10px] text-slate-400 mb-6 uppercase tracking-widest">Administrator Login</p>
+            <input type="text" id="accountInput" placeholder="請輸入編號" 
                 class="w-full p-4 border-2 border-slate-100 rounded-2xl text-center text-xl font-bold mb-4 focus:border-blue-500 outline-none">
-            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg btn-active-scale hover:bg-blue-700">進入系統</button>
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg btn-active-scale">進入系統</button>
         </div>
     </div>
 
-    <!-- 頂部與統計面板 -->
+    <!-- 頂部導航 -->
     <header class="bg-blue-700 text-white sticky top-0 shadow-lg z-40">
         <div class="p-4 border-b border-blue-600/50">
             <div class="flex justify-between items-center mb-3">
                 <div>
-                    <h1 class="text-lg font-bold">Amway Network</h1>
+                    <h1 class="text-lg font-bold flex items-center gap-2">
+                        Amway Manager
+                        <span id="syncStatusIcon" class="hidden">
+                            <svg class="w-3 h-3 syncing-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </span>
+                    </h1>
                     <div class="text-[10px] flex items-center">
                         <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
                         <span id="displayAccount">未登入</span>
@@ -66,8 +72,8 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="fetchFromCloud()" class="p-2 bg-blue-600 rounded-full btn-active-scale">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <button onclick="forceSync()" class="p-2 bg-blue-600 rounded-full btn-active-scale">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" /></svg>
                     </button>
                     <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm btn-active-scale">+ 頂層</button>
                 </div>
@@ -76,22 +82,22 @@
             <!-- 數據統計 -->
             <div class="flex gap-2 mt-2">
                 <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
-                    <span class="text-[9px] uppercase opacity-70">直銷商總數</span>
+                    <span class="text-[9px] uppercase opacity-70">直銷商</span>
                     <span id="distributorCount" class="text-lg font-black italic">0</span>
                 </div>
                 <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
-                    <span class="text-[9px] uppercase opacity-70">會員總數</span>
+                    <span class="text-[9px] uppercase opacity-70">會員</span>
                     <span id="memberCount" class="text-lg font-black italic">0</span>
                 </div>
                 <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
-                    <span class="text-[9px] uppercase opacity-70">總人數</span>
+                    <span class="text-[9px] uppercase opacity-70">總數</span>
                     <span id="totalFocusCount" class="text-lg font-black italic">0</span>
                 </div>
             </div>
         </div>
         
         <div class="p-3 bg-blue-800">
-            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋姓名、地點、職業..." 
+            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="快速搜尋夥伴..." 
                 class="w-full p-2.5 rounded-xl bg-blue-900/50 border-none text-sm text-white placeholder-blue-300 outline-none">
         </div>
     </header>
@@ -99,11 +105,11 @@
     <!-- 組織樹容器 -->
     <main id="network-container" class="p-4 space-y-1"></main>
 
-    <!-- 編輯彈窗 -->
+    <!-- 編輯彈窗 (內容結構與上版相同) -->
     <div id="editModal" class="modal items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
             <div class="p-5 border-b flex justify-between items-center bg-slate-50">
-                <span class="font-bold text-slate-800">夥伴詳細資訊</span>
+                <span class="font-bold text-slate-800">編輯夥伴</span>
                 <button onclick="closeModal()" class="text-slate-400 text-2xl px-2">&times;</button>
             </div>
 
@@ -114,60 +120,60 @@
                         <input type="text" id="editName" class="p-3 border rounded-xl text-sm bg-slate-50">
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400 font-bold ml-1">身分級別</label>
+                        <label class="text-[10px] text-slate-400 font-bold ml-1">級別</label>
                         <select id="editLevel" class="p-3 border rounded-xl text-sm bg-slate-50">
-                            <option value="distributor">直銷商 (綠色)</option>
-                            <option value="member">一般會員 (橘色)</option>
-                            <option value="lead">潛在對象 (紅色)</option>
+                            <option value="distributor">直銷商 (DD/PRO)</option>
+                            <option value="member">一般會員 (MEMBER)</option>
+                            <option value="lead">潛在對象 (LEAD)</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400 font-bold ml-1">目前職業</label>
+                        <label class="text-[10px] text-slate-400 font-bold ml-1">職業</label>
                         <input type="text" id="editJob" class="p-3 border rounded-xl text-sm bg-slate-50">
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-[10px] text-slate-400 font-bold ml-1">居住地區</label>
+                        <label class="text-[10px] text-slate-400 font-bold ml-1">地區</label>
                         <input type="text" id="editLocation" class="p-3 border rounded-xl text-sm bg-slate-50">
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-[10px] text-slate-400 font-bold ml-1">隸屬上層</label>
+                    <label class="text-[10px] text-slate-400 font-bold ml-1">上線領導人</label>
                     <select id="editParentId" class="p-3 border rounded-xl text-sm bg-blue-50 border-blue-100"></select>
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-[10px] text-slate-400 font-bold ml-1">經營現況 / 狀態</label>
+                    <label class="text-[10px] text-slate-400 font-bold ml-1">經營現況</label>
                     <textarea id="editStatus" rows="2" class="p-3 border rounded-xl text-sm bg-slate-50 resize-none"></textarea>
                 </div>
 
                 <div class="border-t pt-4">
                     <label class="text-[10px] font-bold text-slate-400 flex justify-between items-center mb-3">
-                        <span>互動日誌</span>
+                        <span>日誌紀錄</span>
                         <span id="journalCount" class="bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">0</span>
                     </label>
                     <div class="flex flex-col gap-2 mb-4">
                         <div class="flex gap-2">
                             <input type="date" id="newJournalDate" class="p-2 border rounded-lg text-xs bg-slate-50">
-                            <input type="text" id="newJournalInput" placeholder="新增互動細節..." class="flex-1 p-2 border rounded-lg text-xs">
+                            <input type="text" id="newJournalInput" placeholder="寫點什麼..." class="flex-1 p-2 border rounded-lg text-xs">
                         </div>
-                        <button onclick="addJournalEntry()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold">新增日誌</button>
+                        <button onclick="addJournalEntry()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold">新增紀錄</button>
                     </div>
                     <div id="journalList" class="space-y-2"></div>
                 </div>
             </div>
 
             <div class="absolute bottom-0 left-0 right-0 p-5 border-t bg-white flex gap-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-                <button onclick="saveChanges()" class="flex-[3] bg-blue-600 text-white py-4 rounded-2xl font-bold btn-active-scale shadow-lg">儲存同步</button>
+                <button onclick="saveChanges()" class="flex-[3] bg-blue-600 text-white py-4 rounded-2xl font-bold btn-active-scale shadow-lg">儲存並背景同步</button>
                 <button onclick="confirmDelete()" class="flex-1 bg-rose-50 text-rose-600 py-4 rounded-2xl font-bold btn-active-scale border border-rose-100">刪除</button>
             </div>
         </div>
     </div>
 
-    <!-- 刪除確認 -->
+    <!-- 刪除確認 (保持不變) -->
     <div id="deleteConfirmModal" class="modal items-center justify-center p-6" style="z-index: 200;">
         <div class="bg-white rounded-3xl w-full max-w-xs p-6 shadow-2xl text-center">
             <h3 class="text-lg font-bold mb-2">確定刪除此成員？</h3>
@@ -188,17 +194,17 @@
         let currentEditId = null;
         let currentFilter = "";
         let tempJournals = [];
+        
+        // 性能優化關鍵：同步排程器
+        let syncTimeout = null;
+        let isSyncing = false;
 
         window.onload = () => {
-            const today = new Date().toISOString().split('T')[0];
-            const dateInput = document.getElementById('newJournalDate');
-            if (dateInput) dateInput.value = today;
-
             if (currentAccount) {
                 document.getElementById('loginModal').style.display = 'none';
                 document.getElementById('displayAccount').innerText = "帳號: " + currentAccount;
                 loadLocalData();
-                fetchFromCloud();
+                fetchFromCloud(); // 初始從雲端拉取
             }
         };
 
@@ -217,13 +223,27 @@
             try {
                 networkData = raw ? JSON.parse(raw) : [];
                 renderNetwork();
-            } catch (e) {
-                networkData = [];
-            }
+            } catch (e) { networkData = []; }
         }
 
         function saveLocal() {
             localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
+            // 每次本地儲存後，啟動排程同步 (3秒後執行)
+            scheduleSync();
+        }
+
+        function scheduleSync() {
+            if (syncTimeout) clearTimeout(syncTimeout);
+            document.getElementById('syncStatusIcon').classList.remove('hidden');
+            document.getElementById('syncStatusIcon').classList.add('sync-pending');
+            
+            syncTimeout = setTimeout(() => {
+                uploadToCloud();
+            }, 3000); // 延遲3秒，合併連續操作
+        }
+
+        async function forceSync() {
+            await fetchFromCloud();
         }
 
         async function fetchFromCloud() {
@@ -236,7 +256,8 @@
                     ...item,
                     journals: typeof item.journals === 'string' ? JSON.parse(item.journals) : (Array.isArray(item.journals) ? item.journals : [])
                 }));
-                saveLocal();
+                // 更新本地
+                localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
                 renderNetwork();
                 updateStatus("已連線", "green");
             } catch (e) {
@@ -246,59 +267,33 @@
         }
 
         async function uploadToCloud() {
-            if (!currentAccount) return;
-            updateStatus("上傳中", "blue", true);
+            if (!currentAccount || isSyncing) return;
+            
+            isSyncing = true;
+            document.getElementById('syncStatusIcon').classList.remove('sync-pending');
+            document.getElementById('syncStatusIcon').classList.add('syncing-icon');
+            
             try {
                 const payload = networkData.map(node => ({
                     ...node,
                     journals: JSON.stringify(node.journals)
                 }));
+                
+                // 使用 POST 提交完整資料
                 await fetch(CLOUD_API_URL, {
                     method: 'POST',
                     body: JSON.stringify({ accountId: currentAccount, data: payload }),
-                    mode: 'no-cors'
+                    mode: 'no-cors' // Google Apps Script 跨網域常用模式
                 });
-                setTimeout(() => updateStatus("已同步", "green"), 1500);
+                
+                updateStatus("已同步", "green");
             } catch (e) {
-                updateStatus("連線失敗", "red");
+                updateStatus("同步中斷", "orange");
+            } finally {
+                isSyncing = false;
+                document.getElementById('syncStatusIcon').classList.add('hidden');
+                document.getElementById('syncStatusIcon').classList.remove('syncing-icon');
             }
-        }
-
-        function updateStats() {
-            const distributors = networkData.filter(n => n.level === 'distributor').length;
-            const members = networkData.filter(n => n.level === 'member').length;
-            document.getElementById('distributorCount').innerText = distributors;
-            document.getElementById('memberCount').innerText = members;
-            document.getElementById('totalFocusCount').innerText = distributors + members;
-        }
-
-        function translateFlatToTree(flatData) {
-            const map = {}; 
-            const roots = [];
-            flatData.forEach(node => { map[node.id] = { ...node, children: [] }; });
-            flatData.forEach(node => {
-                if (node.parentId && map[node.parentId]) {
-                    map[node.parentId].children.push(map[node.id]);
-                } else {
-                    roots.push(map[node.id]);
-                }
-            });
-            return roots;
-        }
-
-        function toggleCollapse(id, event) {
-            event.stopPropagation();
-            if (collapsedNodes.has(id)) {
-                collapsedNodes.delete(id);
-            } else {
-                collapsedNodes.add(id);
-            }
-            renderNetwork();
-        }
-
-        function handleSearch() {
-            currentFilter = document.getElementById('searchInput').value.trim();
-            renderNetwork();
         }
 
         function renderNetwork() {
@@ -310,20 +305,16 @@
             const isSearching = currentFilter !== "";
             const searchLower = currentFilter.toLowerCase();
 
-            // 輔助函式：檢查某個節點或其子節點是否符合搜尋條件
             function checkMatch(node) {
                 const selfMatch = node.name.toLowerCase().includes(searchLower) || 
                                  (node.location && node.location.toLowerCase().includes(searchLower)) ||
                                  (node.job && node.job.toLowerCase().includes(searchLower));
                 if (selfMatch) return true;
-                if (node.children) {
-                    return node.children.some(c => checkMatch(c));
-                }
+                if (node.children) return node.children.some(c => checkMatch(c));
                 return false;
             }
 
             function buildHTML(node, depth = 0, isHiddenByParent = false) {
-                // 如果在搜尋模式，檢查本節點分支是否有匹配
                 const hasMatchInBranch = isSearching ? checkMatch(node) : true;
                 if (isSearching && !hasMatchInBranch) return '';
 
@@ -331,35 +322,30 @@
                 const borderColor = node.level === 'distributor' ? 'border-green-500' : (node.level === 'member' ? 'border-orange-500' : 'border-rose-500');
                 const hasChildren = node.children && node.children.length > 0;
                 
-                // 搜尋模式下強制不收合
                 const effectiveCollapsed = isSearching ? false : isCollapsed;
-                // 一般模式下，如果父級收合，則子級隱藏
                 const displayClass = (!isSearching && isHiddenByParent) ? 'hidden' : 'block';
 
                 let html = `
                 <div class="${displayClass}" style="margin-left: ${depth * 18}px; position: relative;">
                     ${depth > 0 ? '<div class="tree-line"></div><div class="tree-connector"></div>' : ''}
-                    <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 transition-all cursor-pointer hover:shadow-md" onclick="openEditModal('${node.id}')">
-                        
-                        <!-- 收合按鈕 (搜尋中隱藏) -->
+                    <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 cursor-pointer" onclick="openEditModal('${node.id}')">
                         <div class="mr-1 w-6 h-6 flex items-center justify-center">
                             ${(hasChildren && !isSearching) ? `
                                 <div onclick="toggleCollapse('${node.id}', event)" class="w-full h-full flex items-center justify-center transition-transform ${effectiveCollapsed ? '' : 'rotate-90 text-blue-500'}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
                                     </svg>
                                 </div>
                             ` : ''}
                         </div>
-
                         <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 border text-[10px] font-bold text-slate-400">
                             ${node.name.charAt(0)}
                         </div>
                         <div class="flex-1">
                             <div class="text-sm font-bold text-slate-800">${node.name}</div>
-                            <div class="text-[10px] text-slate-400">${node.location || '地區未標記'} • ${node.job || '職業未填'}</div>
+                            <div class="text-[9px] text-slate-400 uppercase tracking-tighter">${node.location || '未知'} • ${node.job || '未填'}</div>
                         </div>
-                        <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 text-xl hover:bg-blue-50 rounded-lg">＋</button>
+                        <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 text-lg">＋</button>
                     </div>
                 </div>`;
                 
@@ -372,13 +358,35 @@
             }
             
             if (networkData.length === 0) {
-                container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm">尚未建立組織，請點擊上方「+ 頂層」</div>`;
+                container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm italic">點擊上方「+ 頂層」開始建立</div>`;
             } else {
                 treeData.forEach(root => container.innerHTML += buildHTML(root));
             }
         }
 
-        // --- 剩餘邏輯保持不變 ---
+        // --- 以下為通用邏輯 (保持與上版相容但優化效能) ---
+        function translateFlatToTree(flatData) {
+            const map = {}; const roots = [];
+            flatData.forEach(node => { map[node.id] = { ...node, children: [] }; });
+            flatData.forEach(node => {
+                if (node.parentId && map[node.parentId]) { map[node.parentId].children.push(map[node.id]); } 
+                else { roots.push(map[node.id]); }
+            });
+            return roots;
+        }
+
+        function toggleCollapse(id, event) {
+            event.stopPropagation();
+            if (collapsedNodes.has(id)) collapsedNodes.delete(id);
+            else collapsedNodes.add(id);
+            renderNetwork();
+        }
+
+        function handleSearch() {
+            currentFilter = document.getElementById('searchInput').value.trim();
+            renderNetwork();
+        }
+
         function openEditModal(id) {
             currentEditId = id;
             const n = networkData.find(x => x.id === id);
@@ -389,7 +397,6 @@
             document.getElementById('editJob').value = n.job || "";
             document.getElementById('editLocation').value = n.location || "";
             document.getElementById('editStatus').value = n.status || "";
-            document.getElementById('newJournalDate').value = new Date().toISOString().split('T')[0];
             
             tempJournals = Array.isArray(n.journals) ? [...n.journals] : [];
             renderJournals();
@@ -408,43 +415,6 @@
             document.getElementById('editModal').classList.add('active');
         }
 
-        function renderJournals() {
-            const list = document.getElementById('journalList');
-            document.getElementById('journalCount').innerText = tempJournals.length;
-            const sortedJournals = [...tempJournals].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            list.innerHTML = sortedJournals.map((j) => {
-                const originalIndex = tempJournals.findIndex(item => item === j);
-                return `
-                    <div class="bg-slate-50 p-2 rounded-lg text-[11px] flex justify-between items-start border border-slate-100">
-                        <div class="flex-1">
-                            <span class="font-bold text-blue-500 mr-2">${j.date}</span>
-                            <span class="text-slate-700">${j.text}</span>
-                        </div>
-                        <button onclick="deleteJournal(${originalIndex})" class="text-rose-400 ml-2 font-bold px-1">&times;</button>
-                    </div>
-                `;
-            }).join('') || '<div class="text-center text-slate-300 text-xs py-4 italic">尚無日誌紀錄</div>';
-        }
-
-        function addJournalEntry() {
-            const dateInput = document.getElementById('newJournalDate');
-            const textInput = document.getElementById('newJournalInput');
-            if (!textInput.value.trim()) return;
-            const selectedDate = dateInput.value || new Date().toISOString().split('T')[0];
-            tempJournals.push({ 
-                date: selectedDate.replace(/-/g, '/'), 
-                text: textInput.value.trim() 
-            });
-            textInput.value = '';
-            renderJournals();
-        }
-
-        function deleteJournal(i) { 
-            tempJournals.splice(i, 1); 
-            renderJournals(); 
-        }
-
         function saveChanges() {
             const idx = networkData.findIndex(x => x.id === currentEditId);
             if (idx === -1) return;
@@ -455,16 +425,41 @@
             networkData[idx].status = document.getElementById('editStatus').value;
             networkData[idx].parentId = document.getElementById('editParentId').value || null;
             networkData[idx].journals = [...tempJournals];
-            saveLocal(); 
+            
+            saveLocal(); // 觸發本地儲存與排程同步
             renderNetwork(); 
             closeModal(); 
-            uploadToCloud();
         }
 
+        function renderJournals() {
+            const list = document.getElementById('journalList');
+            document.getElementById('journalCount').innerText = tempJournals.length;
+            const sorted = [...tempJournals].sort((a, b) => new Date(b.date) - new Date(a.date));
+            list.innerHTML = sorted.map((j, i) => `
+                <div class="bg-slate-50 p-2 rounded-lg text-[11px] flex justify-between items-start border border-slate-100">
+                    <div class="flex-1">
+                        <span class="font-bold text-blue-500 mr-2">${j.date}</span>
+                        <span class="text-slate-700">${j.text}</span>
+                    </div>
+                    <button onclick="deleteJournal(${tempJournals.indexOf(j)})" class="text-rose-400 ml-2">&times;</button>
+                </div>
+            `).join('') || '<div class="text-center text-slate-300 text-[10px] py-4">無紀錄</div>';
+        }
+
+        function addJournalEntry() {
+            const dateInput = document.getElementById('newJournalDate');
+            const textInput = document.getElementById('newJournalInput');
+            if (!textInput.value.trim()) return;
+            tempJournals.push({ date: (dateInput.value || new Date().toISOString().split('T')[0]).replace(/-/g, '/'), text: textInput.value.trim() });
+            textInput.value = '';
+            renderJournals();
+        }
+
+        function deleteJournal(i) { tempJournals.splice(i, 1); renderJournals(); }
         function closeModal() { document.getElementById('editModal').classList.remove('active'); }
         function confirmDelete() { document.getElementById('deleteConfirmModal').classList.add('active'); }
         function closeDeleteConfirm() { document.getElementById('deleteConfirmModal').classList.remove('active'); }
-
+        
         function executeDelete() {
             const idsToDelete = new Set();
             const collect = (id) => {
@@ -477,25 +472,23 @@
             renderNetwork(); 
             closeDeleteConfirm(); 
             closeModal(); 
-            uploadToCloud();
         }
 
         function openAddModal(pId) {
             const newNode = { 
-                id: 'id-' + Date.now() + Math.floor(Math.random() * 100), 
-                parentId: pId, 
-                name: '新夥伴', 
-                level: 'lead', 
-                journals: [], 
-                location: '', 
-                job: '', 
-                status: '', 
-                account_id: currentAccount
+                id: 'id-' + Date.now(), parentId: pId, name: '新夥伴', level: 'lead', 
+                journals: [], location: '', job: '', status: '', account_id: currentAccount
             };
             networkData.push(newNode);
-            saveLocal(); 
-            renderNetwork(); 
-            openEditModal(newNode.id);
+            saveLocal(); renderNetwork(); openEditModal(newNode.id);
+        }
+
+        function updateStats() {
+            const d = networkData.filter(n => n.level === 'distributor').length;
+            const m = networkData.filter(n => n.level === 'member').length;
+            document.getElementById('distributorCount').innerText = d;
+            document.getElementById('memberCount').innerText = m;
+            document.getElementById('totalFocusCount').innerText = d + m;
         }
 
         function updateStatus(txt, color, pulse) {
