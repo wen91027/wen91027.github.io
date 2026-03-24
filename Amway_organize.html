@@ -2,652 +2,451 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的組織網</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>安麗組織網 - 系統管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .node-distributor { border: 2px solid #22c55e; background-color: #f0fdf4; }
-        .node-member { border: 2px solid #f97316; background-color: #fffaf5; }
-        .node-lead { border: 2px solid #ef4444; background-color: #fef2f2; }
-        
         .modal {
             transition: opacity 0.2s ease;
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            z-index: 50;
-            backdrop-filter: blur(2px);
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 100; 
+            backdrop-filter: blur(4px);
         }
         .modal.active { display: flex; }
-
-        .sync-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
-        .loader {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-        }
+        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-spin-custom { animation: spin 1s linear infinite; }
 
-        .collapse-transition {
-            transition: all 0.3s ease-in-out;
-            overflow: hidden;
-        }
-        .rotated {
-            transform: rotate(-90deg);
-        }
-
-        /* 重組模式樣式 */
-        .reorg-mode {
-            outline: 3px dashed #3b82f6;
-            outline-offset: 4px;
-            position: relative;
-        }
-        .reorg-mode::after {
-            content: "請選擇新上線";
+        .tree-line {
             position: absolute;
-            top: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #3b82f6;
-            color: white;
-            padding: 2px 10px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
+            left: -16px; top: -10px; bottom: 20px;
+            width: 2px; background-color: #cbd5e1;
         }
-        .reorg-target-active {
-            background-color: #dbeafe !important;
-            border-color: #3b82f6 !important;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        .tree-connector {
+            position: absolute;
+            left: -16px; top: 22px;
+            width: 12px; height: 2px; background-color: #cbd5e1;
         }
-        .reorg-disabled {
-            opacity: 0.3 !important;
-            cursor: not-allowed !important;
-            pointer-events: none;
-        }
+        .btn-active-scale:active { transform: scale(0.96); }
+        .sync-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-24">
+<body class="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
 
-    <!-- 頂部導覽列 -->
+    <!-- 登入介面 -->
+    <div id="loginModal" class="modal items-center justify-center p-6" style="display: flex;">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border border-slate-100">
+            <div class="mb-4 flex justify-center">
+                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+            </div>
+            <h2 class="text-xl font-bold mb-2">管理員登入</h2>
+            <p class="text-xs text-slate-400 mb-6">請輸入您的經營編號</p>
+            <input type="text" id="accountInput" placeholder="例如: 9314616" 
+                class="w-full p-4 border-2 border-slate-100 rounded-2xl text-center text-xl font-bold mb-4 focus:border-blue-500 outline-none transition-colors">
+            <button onclick="login()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg btn-active-scale hover:bg-blue-700 transition-colors">進入系統</button>
+        </div>
+    </div>
+
+    <!-- 頂部選單 -->
     <header class="bg-blue-700 text-white p-4 sticky top-0 shadow-lg z-40">
         <div class="flex justify-between items-center mb-3">
             <div>
-                <h1 class="text-lg font-bold">Amway 我的組織網</h1>
-                <div id="statusLabel" class="text-[10px] flex items-center">
+                <h1 class="text-lg font-bold tracking-tight">Amway Network</h1>
+                <div class="text-[10px] flex items-center">
                     <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
-                    <span id="statusText">初始化中...</span>
+                    <span id="displayAccount">未登入</span>
+                    <span id="statusText" class="ml-1 opacity-60"></span>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="fetchFromCloud()" class="bg-blue-600 hover:bg-blue-500 p-2 rounded-full transition-transform active:scale-90" title="手動同步雲端">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                <button id="syncBtn" onclick="fetchFromCloud()" class="p-2 bg-blue-600 rounded-full btn-active-scale hover:bg-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
-                <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-transform">+ 新增頂層</button>
+                <button onclick="openAddModal(null)" class="bg-white text-blue-700 px-4 py-1 rounded-full text-sm font-bold shadow-sm btn-active-scale">+ 新增頂層</button>
             </div>
         </div>
-        
-        <!-- 搜尋欄位與類型切換 -->
-        <div class="flex gap-2 mt-2">
-            <select id="searchType" onchange="handleSearch()" class="bg-blue-800 text-xs text-white rounded-lg px-2 border-none outline-none focus:ring-1 focus:ring-blue-400">
-                <option value="location">搜尋地點</option>
-                <option value="name">搜尋姓名</option>
-            </select>
-            <div class="relative flex-1">
-                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="輸入關鍵字篩選..." 
-                    class="w-full p-2 pl-9 rounded-lg bg-blue-800 border-none text-sm text-white placeholder-blue-300 focus:ring-2 focus:ring-blue-400 outline-none shadow-inner">
-                <div class="absolute left-3 top-2.5 text-blue-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </div>
-            </div>
-        </div>
-
-        <!-- 重組模式工具列 (隱藏) -->
-        <div id="reorgToolbar" class="hidden mt-3 bg-yellow-400 text-yellow-900 p-2 rounded-lg flex justify-between items-center animate-bounce">
-            <span class="text-xs font-bold">⚠️ 正在重組組織...</span>
-            <div class="flex gap-2">
-                <button onclick="moveToTop()" class="bg-white/50 px-2 py-1 rounded text-[10px] font-bold">移至頂層</button>
-                <button onclick="cancelReorg()" class="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">取消</button>
-            </div>
-        </div>
-
-        <!-- 統計數據列 -->
-        <div id="statsBar" class="mt-3 flex gap-2 overflow-x-auto pb-1">
-            <div class="bg-blue-800/50 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-blue-600/30">
-                <span class="text-[10px] text-blue-200 uppercase tracking-wider">小組總人數</span>
-                <span id="totalGroupCount" class="text-sm font-bold">0</span>
-            </div>
-            <div class="bg-green-600/20 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-green-500/30">
-                <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                <span class="text-[10px] text-green-100">直銷商</span>
-                <span id="distributorCount" class="text-sm font-bold">0</span>
-            </div>
-            <div class="bg-orange-600/20 px-3 py-1.5 rounded-lg flex-shrink-0 flex items-center gap-2 border border-orange-500/30">
-                <div class="w-1.5 h-1.5 rounded-full bg-orange-400"></div>
-                <span class="text-[10px] text-orange-100">會員</span>
-                <span id="memberCount" class="text-sm font-bold">0</span>
-            </div>
-        </div>
+        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋姓名、地點、職業..." 
+            class="w-full p-2.5 rounded-xl bg-blue-800 border-none text-sm text-white placeholder-blue-300 outline-none focus:ring-2 focus:ring-blue-400">
     </header>
 
-    <!-- 組織樹狀圖容器 -->
-    <main id="network-container" class="p-4 space-y-3">
-        <div id="loading-placeholder" class="animate-pulse space-y-4">
-            <div class="h-16 bg-gray-200 rounded-xl"></div>
-            <div class="h-16 bg-gray-200 rounded-xl ml-6"></div>
-            <div class="h-16 bg-gray-200 rounded-xl ml-12"></div>
-        </div>
-    </main>
+    <!-- 組織樹容器 -->
+    <main id="network-container" class="p-4 space-y-1"></main>
 
-    <!-- 編輯/詳情 Modal -->
+    <!-- 編輯彈窗 -->
     <div id="editModal" class="modal items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
-            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
-                <h2 class="font-bold text-gray-700">夥伴詳細資訊</h2>
-                <button onclick="closeModal()" class="text-gray-400 text-2xl px-2">&times;</button>
+        <div class="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative border border-slate-100">
+            <div class="p-5 border-b flex justify-between items-center bg-slate-50">
+                <span class="font-bold text-slate-800">夥伴詳細資訊</span>
+                <button onclick="closeModal()" class="text-slate-400 text-2xl px-2 hover:text-slate-600 transition-colors">&times;</button>
             </div>
 
-            <div class="overflow-y-auto p-5 space-y-6">
-                <!-- 基本資料 -->
-                <section class="space-y-4">
-                    <div class="flex gap-4 items-center">
-                        <div class="flex-1">
-                            <label class="text-xs font-bold text-gray-500 uppercase">狀態等級</label>
-                            <select id="editLevel" class="w-full mt-1 p-2 bg-white border border-gray-200 rounded-lg text-sm">
-                                <option value="distributor">直銷商 (綠色)</option>
-                                <option value="member">會員 (橘色)</option>
-                                <option value="lead">潛在客戶 (紅色)</option>
-                            </select>
-                        </div>
-                        <div class="flex-1">
-                            <label class="text-xs font-bold text-gray-500 uppercase">姓名</label>
-                            <input type="text" id="editName" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
-                        </div>
+            <div class="overflow-y-auto p-6 space-y-5 pb-32">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">姓名</label>
+                        <input type="text" id="editName" class="p-3 border rounded-xl text-sm outline-none bg-slate-50 focus:bg-white focus:border-blue-400">
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-xs font-bold text-gray-500 uppercase">職業</label>
-                            <input type="text" id="editJob" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-500 uppercase">地區</label>
-                            <input type="text" id="editLocation" class="w-full mt-1 p-2 border border-gray-200 rounded-lg text-sm">
-                        </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">身分級別</label>
+                        <select id="editLevel" class="p-3 border rounded-xl text-sm outline-none bg-slate-50 focus:bg-white focus:border-blue-400">
+                            <option value="distributor">直銷商 (綠色)</option>
+                            <option value="member">一般會員 (橘色)</option>
+                            <option value="lead">潛在對象 (紅色)</option>
+                        </select>
                     </div>
+                </div>
 
-                    <!-- 照片上傳區 -->
-                    <div>
-                        <label class="text-xs font-bold text-gray-500 uppercase">照片設置</label>
-                        <div class="mt-1 flex items-center gap-3">
-                            <div id="photoPreview" class="w-12 h-12 rounded-full bg-gray-100 border overflow-hidden flex-shrink-0">
-                                <img id="editPhotoImg" src="" class="w-full h-full object-cover hidden">
-                                <div id="photoPlaceholder" class="w-full h-full flex items-center justify-center text-[8px] text-gray-400">無圖</div>
-                            </div>
-                            <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="uploadToGitHub(this)">
-                            <button id="uploadBtn" onclick="document.getElementById('photoInput').click()" class="flex-1 py-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition">
-                                點擊上傳照片至 GitHub
-                            </button>
-                        </div>
-                        <input type="hidden" id="editPhotoUrl">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">目前職業</label>
+                        <input type="text" id="editJob" class="p-3 border rounded-xl text-sm outline-none bg-slate-50">
                     </div>
-                </section>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">居住地區</label>
+                        <input type="text" id="editLocation" class="p-3 border rounded-xl text-sm outline-none bg-slate-50">
+                    </div>
+                </div>
 
-                <section class="border-t pt-4">
-                    <label class="text-xs font-bold text-gray-500 uppercase">核心狀況描述</label>
-                    <textarea id="editStatus" rows="3" class="w-full mt-1 p-3 border border-gray-200 rounded-lg text-sm" placeholder="目前的經營或產品使用狀況..."></textarea>
-                </section>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">隸屬上層 (Parent)</label>
+                    <select id="editParentId" class="p-3 border rounded-xl text-sm outline-none bg-blue-50 border-blue-100 focus:border-blue-400"></select>
+                </div>
 
-                <section class="border-t pt-4">
-                    <label class="text-xs font-bold text-gray-500 uppercase block mb-2">互動日記</label>
-                    <div id="journalList" class="space-y-2 mb-4"></div>
-                    <div class="bg-blue-50 p-3 rounded-xl space-y-2 border border-blue-100">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] text-slate-400 font-bold ml-1 uppercase">經營現況 / 狀態</label>
+                    <textarea id="editStatus" rows="2" class="p-3 border rounded-xl text-sm outline-none resize-none bg-slate-50 focus:bg-white focus:border-blue-400" placeholder="記錄目前經營進度..."></textarea>
+                </div>
+
+                <!-- 互動日誌區塊更新 -->
+                <div class="border-t pt-4">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase flex justify-between items-center mb-3">
+                        <span>互動日誌 / Follow-up</span>
+                        <span id="journalCount" class="bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">0</span>
+                    </label>
+                    <div class="flex flex-col gap-2 mb-4">
                         <div class="flex gap-2">
-                            <input type="date" id="newJournalDate" class="p-2 border border-blue-200 rounded text-xs bg-white">
-                            <button onclick="addJournal()" class="flex-1 bg-blue-600 text-white rounded text-xs font-bold active:bg-blue-700 transition-colors">添加日記</button>
+                            <input type="date" id="newJournalDate" class="p-2 border rounded-lg text-xs outline-none focus:border-blue-400 bg-slate-50">
+                            <input type="text" id="newJournalInput" placeholder="新增互動細節..." class="flex-1 p-2 border rounded-lg text-xs outline-none focus:border-blue-400">
                         </div>
-                        <input type="text" id="newJournalText" class="w-full p-2 border border-blue-200 rounded text-xs bg-white" placeholder="輸入互動摘要...">
+                        <button onclick="addJournalEntry()" class="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">新增日誌</button>
                     </div>
-                </section>
+                    <div id="journalList" class="space-y-2"></div>
+                </div>
             </div>
 
-            <div class="p-4 border-t bg-gray-50 flex gap-2">
-                <button onclick="saveChanges()" class="flex-1 bg-blue-700 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-800 transition active:scale-95">儲存並同步</button>
-                <button onclick="handleDelete()" class="px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl transition">刪除</button>
+            <div class="absolute bottom-0 left-0 right-0 p-5 border-t bg-white flex gap-3">
+                <button onclick="saveChanges()" class="flex-[3] bg-blue-600 text-white py-4 rounded-2xl font-bold btn-active-scale shadow-lg hover:bg-blue-700 transition-colors">儲存同步</button>
+                <button onclick="confirmDelete()" class="flex-1 bg-rose-50 text-rose-600 py-4 rounded-2xl font-bold btn-active-scale border border-rose-100 hover:bg-rose-100 transition-colors">刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 刪除確認 -->
+    <div id="deleteConfirmModal" class="modal items-center justify-center p-6" style="z-index: 200;">
+        <div class="bg-white rounded-3xl w-full max-w-xs p-6 shadow-2xl text-center border border-slate-100">
+            <h3 class="text-lg font-bold mb-2">確定刪除此成員？</h3>
+            <p class="text-sm text-gray-400 mb-6">這將一併移除其下屬所有組織成員，此操作無法撤銷。</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteConfirm()" class="flex-1 py-3 bg-slate-100 rounded-xl font-bold text-slate-600">取消</button>
+                <button onclick="executeDelete()" class="flex-1 py-3 bg-rose-600 text-white rounded-xl font-bold">確定刪除</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 設定區 ---
         const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyZ75mgqzR-A_jwdfTd7nIViAnIMMlnbL_f6wP6iXGTYzgl-hM91gM_xJ58IyxRVnM/exec"; 
-        const GITHUB_CONFIG = {
-            token: "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", 
-            owner: "wen91027", 
-            repo: "amway-photos", 
-            path: "avatars"
+        
+        let currentAccount = localStorage.getItem('amway_active_acc') || "";
+        let networkData = []; 
+        let currentEditId = null;
+        let currentFilter = "";
+        let tempJournals = [];
+
+        window.onload = () => {
+            // 初始化日期選擇器為今天
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('newJournalDate');
+            if (dateInput) dateInput.value = today;
+
+            if (currentAccount) {
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('displayAccount').innerText = "帳號: " + currentAccount;
+                loadLocalData();
+                fetchFromCloud();
+            }
         };
 
-        let networkData = [];
-        let currentEditId = null;
-        let collapsedState = {}; 
-        let currentFilter = ""; 
-
-        // 重組模式狀態
-        let reorgSourceId = null;
-        let reorgDisabledIds = new Set();
-
-        async function init() {
-            const localData = localStorage.getItem('amway_network_v3');
-            if (localData) {
-                try {
-                    networkData = JSON.parse(localData);
-                    renderNetwork();
-                    updateStatus("本地模式", "orange");
-                } catch(e) { networkData = []; }
-            }
-            if (CLOUD_API_URL && CLOUD_API_URL.startsWith("https")) {
-                setTimeout(fetchFromCloud, 800);
-            }
+        function login() {
+            const acc = document.getElementById('accountInput').value.trim();
+            if (!acc) return;
+            currentAccount = acc;
+            localStorage.setItem('amway_active_acc', acc);
+            document.getElementById('displayAccount').innerText = "帳號: " + acc;
+            document.getElementById('loginModal').style.display = 'none';
+            fetchFromCloud();
         }
 
-        // --- 搜尋處理 ---
-        function handleSearch() {
-            currentFilter = document.getElementById('searchInput').value.trim();
-            renderNetwork();
-        }
-
-        // --- GitHub 上傳 ---
-        async function uploadToGitHub(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const btn = document.getElementById('uploadBtn');
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerHTML = `<span class="loader"></span> 上傳中...`;
+        function loadLocalData() {
+            const raw = localStorage.getItem("amway_data_" + currentAccount);
             try {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const content = e.target.result.split(',')[1];
-                    const fileName = `img_${Date.now()}.jpg`;
-                    const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}/${fileName}`;
-                    const res = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `token ${GITHUB_CONFIG.token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: `Upload: ${fileName}`, content: content })
-                    });
-                    if (res.ok) {
-                        const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/master/${GITHUB_CONFIG.path}/${fileName}`;
-                        document.getElementById('editPhotoUrl').value = rawUrl;
-                        const img = document.getElementById('editPhotoImg');
-                        img.src = rawUrl;
-                        img.classList.remove('hidden');
-                        document.getElementById('photoPlaceholder').classList.add('hidden');
-                        btn.innerText = "上傳成功";
-                    } else { throw new Error("GitHub 回傳錯誤"); }
-                };
-                reader.readAsDataURL(file);
-            } catch (err) { alert("GitHub 上傳失敗"); btn.innerText = originalText; } finally { btn.disabled = false; }
+                networkData = raw ? JSON.parse(raw) : [];
+                renderNetwork();
+            } catch (e) {
+                networkData = [];
+            }
         }
 
-        // --- 資料轉換 ---
-        function transformFlatToTree(flatData) {
-            if (!Array.isArray(flatData)) return [];
-            const map = {};
+        function saveLocal() {
+            localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
+        }
+
+        async function fetchFromCloud() {
+            if (!CLOUD_API_URL || !currentAccount) return;
+            updateStatus("同步中", "blue", true);
+            try {
+                const res = await fetch(`${CLOUD_API_URL}?accountId=${currentAccount}`);
+                const data = await res.json();
+                
+                networkData = data.map(item => ({
+                    ...item,
+                    journals: typeof item.journals === 'string' ? JSON.parse(item.journals) : (Array.isArray(item.journals) ? item.journals : [])
+                }));
+                
+                saveLocal();
+                renderNetwork();
+                updateStatus("已連線", "green");
+            } catch (e) {
+                console.error("Fetch error:", e);
+                updateStatus("連線失敗", "red");
+                loadLocalData();
+            }
+        }
+
+        async function uploadToCloud() {
+            if (!currentAccount) return;
+            updateStatus("上傳中", "blue", true);
+            try {
+                const payload = networkData.map(node => ({
+                    ...node,
+                    journals: JSON.stringify(node.journals)
+                }));
+
+                await fetch(CLOUD_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ accountId: currentAccount, data: payload }),
+                    mode: 'no-cors'
+                });
+                
+                setTimeout(() => updateStatus("已同步", "green"), 1500);
+            } catch (e) {
+                updateStatus("連線失敗", "red");
+            }
+        }
+
+        function translateFlatToTree(flatData) {
+            const map = {}; 
             const roots = [];
+            flatData.forEach(node => { map[node.id] = { ...node, children: [] }; });
             flatData.forEach(node => {
-                if (node && node.id) {
-                    let journals = [];
-                    if (typeof node.journals === 'string' && node.journals.trim() !== "") {
-                        try { journals = JSON.parse(node.journals); } catch(e) { journals = []; }
-                    } else if (Array.isArray(node.journals)) { journals = node.journals; }
-                    map[node.id] = { ...node, journals, children: [] };
-                }
-            });
-            flatData.forEach(node => {
-                if (node && node.id) {
-                    if (node.parentId && map[node.parentId]) {
-                        map[node.parentId].children.push(map[node.id]);
-                    } else { roots.push(map[node.id]); }
+                if (node.parentId && map[node.parentId]) {
+                    map[node.parentId].children.push(map[node.id]);
+                } else {
+                    roots.push(map[node.id]);
                 }
             });
             return roots;
         }
 
-        function transformTreeToFlat(roots) {
-            const flat = [];
-            function traverse(node) {
-                const { children, ...data } = node;
-                const item = { ...data };
-                if (Array.isArray(item.journals)) item.journals = JSON.stringify(item.journals);
-                flat.push(item);
-                if (children && children.length > 0) children.forEach(traverse);
-            }
-            roots.forEach(traverse);
-            return flat;
-        }
-
-        async function fetchFromCloud() {
-            if (!CLOUD_API_URL) return;
-            updateStatus("同步雲端...", "blue", true);
-            try {
-                const response = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, { redirect: 'follow' });
-                const text = await response.text();
-                const result = JSON.parse(text);
-                if (Array.isArray(result)) {
-                    networkData = transformFlatToTree(result);
-                    saveToLocal();
-                    renderNetwork();
-                    updateStatus("同步成功", "green");
-                }
-            } catch (error) { updateStatus("同步失敗", "red"); }
-        }
-
-        async function uploadToCloud() {
-            if (!CLOUD_API_URL) return;
-            updateStatus("上傳中...", "blue", true);
-            try {
-                const flatData = transformTreeToFlat(networkData);
-                await fetch(CLOUD_API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(flatData),
-                    mode: 'no-cors' 
-                });
-                setTimeout(() => { updateStatus("雲端已更新", "green"); }, 1500);
-            } catch (error) { updateStatus("連線失敗", "red"); }
-        }
-
-        function updateStatus(text, color, isSyncing = false) {
-            const dot = document.getElementById('statusDot');
-            const label = document.getElementById('statusText');
-            if (!dot || !label) return;
-            label.innerText = text;
-            const colors = { green: 'bg-green-500', blue: 'bg-blue-400', orange: 'bg-orange-500', red: 'bg-red-500' };
-            dot.className = `w-2 h-2 rounded-full mr-1 ${colors[color] || 'bg-gray-400'}`;
-            if (isSyncing) dot.classList.add('sync-pulse');
-            else dot.classList.remove('sync-pulse');
-        }
-
-        function saveToLocal() { localStorage.setItem('amway_network_v3', JSON.stringify(networkData)); }
-
-        // --- 組織重組邏輯 ---
-        function startReorg(id) {
-            reorgSourceId = id;
-            reorgDisabledIds.clear();
-            const sourceNode = findNodeById(id);
-            
-            // 找出所有子代，防止迴圈
-            const collectIds = (n) => {
-                reorgDisabledIds.add(n.id);
-                if (n.children) n.children.forEach(collectIds);
-            };
-            collectIds(sourceNode);
-            
-            document.getElementById('reorgToolbar').classList.remove('hidden');
-            renderNetwork();
-        }
-
-        function cancelReorg() {
-            reorgSourceId = null;
-            reorgDisabledIds.clear();
-            document.getElementById('reorgToolbar').classList.add('hidden');
-            renderNetwork();
-        }
-
-        async function executeReorg(newParentId) {
-            if (!reorgSourceId) return;
-            const sourceNode = findNodeById(reorgSourceId);
-            
-            // 1. 從舊位置移除
-            const removeRecursive = (list, targetId) => {
-                for (let i = 0; i < list.length; i++) {
-                    if (list[i].id === targetId) return list.splice(i, 1)[0];
-                    if (list[i].children) {
-                        const res = removeRecursive(list[i].children, targetId);
-                        if (res) return res;
-                    }
-                }
-                return null;
-            };
-            const extractedNode = removeRecursive(networkData, reorgSourceId);
-
-            // 2. 加入新位置
-            if (newParentId === null) {
-                extractedNode.parentId = null;
-                networkData.push(extractedNode);
-            } else {
-                const targetNode = findNodeById(newParentId);
-                extractedNode.parentId = newParentId;
-                targetNode.children.push(extractedNode);
-                collapsedState[newParentId] = false;
-            }
-
-            saveToLocal();
-            cancelReorg();
-            await uploadToCloud();
-        }
-
-        function moveToTop() { executeReorg(null); }
-
-        // --- 渲染組織網 ---
-        function countLevelsGlobal(nodes, stats = { distributor: 0, member: 0 }) {
-            nodes.forEach(node => {
-                if (node.level === 'distributor') stats.distributor++;
-                else if (node.level === 'member') stats.member++;
-                if (node.children && node.children.length > 0) countLevelsGlobal(node.children, stats);
-            });
-            return stats;
-        }
-
         function renderNetwork() {
             const container = document.getElementById('network-container');
-            if (!container || !networkData) return;
-            container.innerHTML = networkData.length === 0 ? `<div class="text-center py-24 text-gray-400">目前沒有夥伴</div>` : '';
-            
-            const globalStats = countLevelsGlobal(networkData);
-            document.getElementById('distributorCount').innerText = globalStats.distributor;
-            document.getElementById('memberCount').innerText = globalStats.member;
-            document.getElementById('totalGroupCount').innerText = globalStats.distributor + globalStats.member;
-
-            const searchType = document.getElementById('searchType').value;
+            const treeData = translateFlatToTree(networkData);
+            container.innerHTML = '';
+            const searchLower = currentFilter.toLowerCase();
 
             function buildHTML(node, depth = 0) {
-                let isMatched = currentFilter === "";
-                if (!isMatched) {
-                    const val = (searchType === 'location' ? node.location : node.name) || "";
-                    isMatched = val.toLowerCase().includes(currentFilter.toLowerCase());
-                }
+                const isMatched = currentFilter === "" || 
+                                node.name.toLowerCase().includes(searchLower) || 
+                                (node.location && node.location.toLowerCase().includes(searchLower)) ||
+                                (node.job && node.job.toLowerCase().includes(searchLower));
                 
-                let hasMatchedDescendant = false;
-                const checkDescendantMatch = (n) => {
-                    const v = (searchType === 'location' ? n.location : n.name) || "";
-                    if (v.toLowerCase().includes(currentFilter.toLowerCase())) return true;
-                    if (n.children) return n.children.some(checkDescendantMatch);
-                    return false;
-                }
-                
-                if (currentFilter !== "" && !isMatched && !checkDescendantMatch(node)) return "";
+                const borderColor = node.level === 'distributor' ? 'border-green-500' : (node.level === 'member' ? 'border-orange-500' : 'border-rose-500');
+                const displayClass = isMatched ? 'block' : (currentFilter === "" ? 'block' : 'hidden');
 
-                const colorClass = node.level === 'distributor' ? 'node-distributor' : (node.level === 'member' ? 'node-member' : 'node-lead');
-                const isCollapsed = currentFilter !== "" ? false : collapsedState[node.id];
-                const isReorgSource = reorgSourceId === node.id;
-                const isReorgDisabled = reorgDisabledIds.has(node.id);
-
-                let html = `<div class="node-wrapper mb-3" style="margin-left: ${depth * 16}px">
-                    <div 
-                        onclick="${reorgSourceId ? `executeReorg('${node.id}')` : `openEditModal('${node.id}')`}"
-                        class="flex items-center p-3 rounded-xl shadow-md ${colorClass} active:scale-[0.98] transition-all cursor-pointer 
-                        ${!isMatched && currentFilter !== "" ? 'opacity-40 grayscale-[0.5]' : ''} 
-                        ${isReorgSource ? 'reorg-mode' : ''} 
-                        ${(reorgSourceId && !isReorgDisabled) ? 'reorg-target-active' : ''} 
-                        ${(reorgSourceId && isReorgDisabled) ? 'reorg-disabled' : ''}">
-                        
-                        <div class="flex-shrink-0 mr-1 w-6 h-6 flex items-center justify-center" onclick="event.stopPropagation(); toggleCollapse('${node.id}')">
-                            ${(node.children && node.children.length > 0 && currentFilter === "") ? `
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform ${isCollapsed ? 'rotated' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            ` : ''}
+                let html = `
+                <div class="${displayClass}" style="margin-left: ${depth * 18}px; position: relative;">
+                    ${depth > 0 ? '<div class="tree-line"></div><div class="tree-connector"></div>' : ''}
+                    <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 transition-all cursor-pointer hover:shadow-md" onclick="openEditModal('${node.id}')">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 border text-[10px] font-bold text-slate-400">
+                            ${node.name.charAt(0)}
                         </div>
-
-                        <div class="w-10 h-10 bg-white rounded-full overflow-hidden flex-shrink-0 border border-slate-200">
-                            ${node.photo ? `<img src="${node.photo}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300 text-[9px] font-bold uppercase">${node.name?.charAt(0) || '?'}</div>`}
+                        <div class="flex-1">
+                            <div class="text-sm font-bold text-slate-800">${node.name}</div>
+                            <div class="text-[10px] text-slate-400">${node.location || '地區未標記'} • ${node.job || '職業未填'}</div>
                         </div>
-
-                        <div class="ml-3 flex-1 min-w-0">
-                            <h3 class="font-bold text-slate-800 text-sm truncate ${isMatched && currentFilter !== "" && searchType === 'name' ? 'text-blue-600 bg-blue-50' : ''}">${node.name || '未命名'}</h3>
-                            <p class="text-[10px] text-slate-500 font-medium truncate">${node.job || '職業未填'} · <span class="${isMatched && currentFilter !== "" && searchType === 'location' ? 'text-blue-600 font-bold bg-blue-50 px-1 rounded' : ''}">${node.location || '地區未填'}</span></p>
-                        </div>
-
-                        <div class="flex items-center ml-2 border-l pl-2 border-slate-200 gap-1">
-                            <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="新增下線">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                            </button>
-                            <button onclick="event.stopPropagation(); startReorg('${node.id}')" class="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg" title="變更上線">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                </svg>
-                            </button>
-                        </div>
+                        <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 text-xl hover:bg-blue-50 rounded-lg">＋</button>
                     </div>
                 </div>`;
-
-                if (node.children && node.children.length > 0 && !isCollapsed) {
-                    node.children.forEach(child => { html += buildHTML(child, depth + 1); });
-                }
+                if (node.children) node.children.forEach(c => html += buildHTML(c, depth + 1));
                 return html;
             }
-
-            networkData.forEach(root => {
-                const res = buildHTML(root);
-                if (res) {
-                    const div = document.createElement('div');
-                    div.innerHTML = res;
-                    container.appendChild(div);
-                }
-            });
-        }
-
-        // --- 其他工具函式 ---
-        function toggleCollapse(id) { collapsedState[id] = !collapsedState[id]; renderNetwork(); }
-
-        function findNodeById(id, nodes = networkData) {
-            for (let node of nodes) {
-                if (node.id === id) return node;
-                if (node.children) {
-                    let found = findNodeById(id, node.children);
-                    if (found) return found;
-                }
+            
+            if (networkData.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm">尚未建立組織，請點擊上方「新增頂層」</div>`;
+            } else {
+                treeData.forEach(root => container.innerHTML += buildHTML(root));
             }
-            return null;
         }
 
-        function openAddModal(parentId) {
-            const newId = 'id-' + Date.now();
-            const newNode = { id: newId, parentId: parentId, level: 'lead', name: '新夥伴', job: '', location: '', photo: '', status: '', journals: [], children: [] };
-            if (parentId) {
-                const p = findNodeById(parentId);
-                if (p) { p.children.push(newNode); collapsedState[parentId] = false; }
-            } else { networkData.push(newNode); }
-            saveToLocal(); renderNetwork(); openEditModal(newId);
+        function handleSearch() {
+            currentFilter = document.getElementById('searchInput').value.trim();
+            renderNetwork();
         }
 
         function openEditModal(id) {
-            if (reorgSourceId) return; // 重組模式中不開啟編輯
             currentEditId = id;
-            const node = findNodeById(id);
-            if (!node) return;
-            document.getElementById('editName').value = node.name || '';
-            document.getElementById('editLevel').value = node.level || 'lead';
-            document.getElementById('editJob').value = node.job || '';
-            document.getElementById('editLocation').value = node.location || '';
-            document.getElementById('editPhotoUrl').value = node.photo || '';
-            document.getElementById('editStatus').value = node.status || '';
-            const img = document.getElementById('editPhotoImg');
-            const placeholder = document.getElementById('photoPlaceholder');
-            if (node.photo) { img.src = node.photo; img.classList.remove('hidden'); placeholder.classList.add('hidden'); } 
-            else { img.classList.add('hidden'); placeholder.classList.remove('hidden'); }
-            renderJournals(node.journals || []);
-            document.getElementById('editModal').classList.add('active');
-            document.getElementById('newJournalDate').valueAsDate = new Date();
-        }
+            const n = networkData.find(x => x.id === id);
+            if (!n) return;
 
-        function renderJournals(journals) {
-            const list = document.getElementById('journalList');
-            list.innerHTML = '';
-            const sorted = [...journals].sort((a,b) => new Date(b.date) - new Date(a.date));
-            if (sorted.length === 0) { list.innerHTML = `<p class="text-[10px] text-gray-400 italic text-center py-2">尚無互動紀錄</p>`; return; }
-            sorted.forEach((j) => {
-                const div = document.createElement('div');
-                div.className = 'bg-white p-2 rounded border border-gray-100 text-[11px] shadow-sm mb-1';
-                div.innerHTML = `<div><span class="font-bold text-blue-600">${j.date}</span>: ${j.text}</div>`;
-                list.appendChild(div);
-            });
-        }
-
-        function addJournal() {
-            const text = document.getElementById('newJournalText').value;
-            const date = document.getElementById('newJournalDate').value;
-            if(!text || !currentEditId) return;
-            const node = findNodeById(currentEditId);
-            if(!node.journals) node.journals = [];
-            node.journals.push({ date, text });
-            document.getElementById('newJournalText').value = '';
-            renderJournals(node.journals);
-        }
-
-        async function saveChanges() {
-            const node = findNodeById(currentEditId);
-            if (node) {
-                node.name = document.getElementById('editName').value;
-                node.level = document.getElementById('editLevel').value;
-                node.job = document.getElementById('editJob').value;
-                node.location = document.getElementById('editLocation').value;
-                node.photo = document.getElementById('editPhotoUrl').value;
-                node.status = document.getElementById('editStatus').value;
-                saveToLocal(); renderNetwork(); closeModal();
-                await uploadToCloud();
-            }
-        }
-
-        async function handleDelete() {
-            if (!confirm('確定刪除及其所有子下線？')) return;
-            const deleteRecursive = (list, targetId) => {
-                for (let i = 0; i < list.length; i++) {
-                    if (list[i].id === targetId) { list.splice(i, 1); return true; }
-                    if (list[i].children && deleteRecursive(list[i].children, targetId)) return true;
+            document.getElementById('editName').value = n.name || "";
+            document.getElementById('editLevel').value = n.level || "lead";
+            document.getElementById('editJob').value = n.job || "";
+            document.getElementById('editLocation').value = n.location || "";
+            document.getElementById('editStatus').value = n.status || "";
+            
+            // 重設日期為今天
+            document.getElementById('newJournalDate').value = new Date().toISOString().split('T')[0];
+            
+            tempJournals = Array.isArray(n.journals) ? [...n.journals] : [];
+            renderJournals();
+            
+            const parentSelect = document.getElementById('editParentId');
+            parentSelect.innerHTML = '<option value="">--- (頂層) ---</option>';
+            networkData.forEach(node => {
+                if (node.id !== id) {
+                    const opt = document.createElement('option');
+                    opt.value = node.id;
+                    opt.text = node.name;
+                    if (node.id === n.parentId) opt.selected = true;
+                    parentSelect.appendChild(opt);
                 }
-                return false;
-            };
-            deleteRecursive(networkData, currentEditId);
-            saveToLocal(); renderNetwork(); closeModal();
-            await uploadToCloud();
+            });
+            document.getElementById('editModal').classList.add('active');
         }
 
-        function closeModal() { document.getElementById('editModal').classList.remove('active'); currentEditId = null; }
+        function renderJournals() {
+            const list = document.getElementById('journalList');
+            document.getElementById('journalCount').innerText = tempJournals.length;
+            
+            // 排序：依據日期降冪（最新的在上面）
+            const sortedJournals = [...tempJournals].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        init();
+            list.innerHTML = sortedJournals.map((j, index) => {
+                // 在原始陣列中找到真正的索引以便刪除
+                const originalIndex = tempJournals.findIndex(item => item === j);
+                return `
+                    <div class="bg-slate-50 p-2 rounded-lg text-[11px] flex justify-between items-start border border-slate-100">
+                        <div class="flex-1">
+                            <span class="font-bold text-blue-500 mr-2">${j.date}</span>
+                            <span class="text-slate-700">${j.text}</span>
+                        </div>
+                        <button onclick="deleteJournal(${originalIndex})" class="text-rose-400 ml-2 font-bold px-1 hover:text-rose-600">&times;</button>
+                    </div>
+                `;
+            }).join('') || '<div class="text-center text-slate-300 text-xs py-4 italic">尚無日誌紀錄</div>';
+        }
+
+        function addJournalEntry() {
+            const dateInput = document.getElementById('newJournalDate');
+            const textInput = document.getElementById('newJournalInput');
+            
+            if (!textInput.value.trim()) return;
+            
+            const selectedDate = dateInput.value || new Date().toISOString().split('T')[0];
+            
+            // 新增至暫存陣列
+            tempJournals.push({ 
+                date: selectedDate.replace(/-/g, '/'), 
+                text: textInput.value.trim() 
+            });
+            
+            textInput.value = '';
+            renderJournals();
+        }
+
+        function deleteJournal(i) { 
+            tempJournals.splice(i, 1); 
+            renderJournals(); 
+        }
+
+        function saveChanges() {
+            const idx = networkData.findIndex(x => x.id === currentEditId);
+            if (idx === -1) return;
+
+            networkData[idx].name = document.getElementById('editName').value || "無名";
+            networkData[idx].level = document.getElementById('editLevel').value;
+            networkData[idx].job = document.getElementById('editJob').value;
+            networkData[idx].location = document.getElementById('editLocation').value;
+            networkData[idx].status = document.getElementById('editStatus').value;
+            networkData[idx].parentId = document.getElementById('editParentId').value || null;
+            networkData[idx].journals = [...tempJournals];
+            
+            saveLocal(); 
+            renderNetwork(); 
+            closeModal(); 
+            uploadToCloud();
+        }
+
+        function closeModal() { document.getElementById('editModal').classList.remove('active'); }
+        function confirmDelete() { document.getElementById('deleteConfirmModal').classList.add('active'); }
+        function closeDeleteConfirm() { document.getElementById('deleteConfirmModal').classList.remove('active'); }
+
+        function executeDelete() {
+            const idsToDelete = new Set();
+            const collect = (id) => {
+                idsToDelete.add(id);
+                networkData.forEach(n => { if (n.parentId === id) collect(n.id); });
+            };
+            collect(currentEditId);
+            networkData = networkData.filter(n => !idsToDelete.has(n.id));
+            
+            saveLocal(); 
+            renderNetwork(); 
+            closeDeleteConfirm(); 
+            closeModal(); 
+            uploadToCloud();
+        }
+
+        function openAddModal(pId) {
+            const newNode = { 
+                id: 'id-' + Date.now() + Math.floor(Math.random() * 100), 
+                parentId: pId, 
+                name: '新夥伴', 
+                level: 'lead', 
+                journals: [], 
+                location: '', 
+                job: '', 
+                status: '', 
+                photo: '',
+                account_id: currentAccount
+            };
+            networkData.push(newNode);
+            saveLocal(); 
+            renderNetwork(); 
+            openEditModal(newNode.id);
+        }
+
+        function updateStatus(txt, color, pulse) {
+            const dot = document.getElementById('statusDot');
+            document.getElementById('statusText').innerText = "(" + txt + ")";
+            dot.className = "w-2 h-2 rounded-full mr-1 " + (pulse ? 'sync-pulse' : '');
+            dot.style.backgroundColor = { blue: '#3b82f6', green: '#22c55e', red: '#ef4444', orange: '#f59e0b' }[color];
+        }
     </script>
 </body>
 </html>
