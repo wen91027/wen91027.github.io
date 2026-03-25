@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安麗組織管理系統 - 高速版</title>
+    <title>安麗組織管理系統 - 修正篩選版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal {
@@ -28,17 +28,30 @@
         }
         .btn-active-scale:active { transform: scale(0.96); }
         .rotate-90 { transform: rotate(90deg); }
-        .transition-transform { transition: transform 0.2s ease; }
         
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .syncing-icon { animation: spin-slow 1s linear infinite; }
         @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .sync-pending { animation: pulse-soft 2s infinite; }
+
+        /* 篩選選中樣式 */
+        .stat-card.active {
+            background-color: white !important;
+            color: #1d4ed8 !important;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .stat-card.active span { color: #1d4ed8 !important; }
+        .stat-card-lead.active {
+            background-color: #f43f5e !important;
+            color: white !important;
+            border-color: white !important;
+        }
+        .stat-card-lead.active span { color: white !important; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
 
-    <!-- 登入介面 (保持不變) -->
+    <!-- 登入介面 -->
     <div id="loginModal" class="modal items-center justify-center p-6" style="display: flex;">
         <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border border-slate-100">
             <div class="mb-4 flex justify-center">
@@ -79,33 +92,47 @@
                 </div>
             </div>
             
-            <!-- 數據統計 -->
-            <div class="flex gap-2 mt-2">
-                <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
+            <div class="grid grid-cols-4 gap-1.5 mt-2">
+                <div onclick="toggleStatFilter('distributor')" id="stat-distributor" class="stat-card bg-white/10 rounded-xl p-2 flex flex-col items-center cursor-pointer transition-all">
                     <span class="text-[9px] uppercase opacity-70">直銷商</span>
-                    <span id="distributorCount" class="text-lg font-black italic">0</span>
+                    <span id="distributorCount" class="text-base font-black italic">0</span>
                 </div>
-                <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
+                <div onclick="toggleStatFilter('member')" id="stat-member" class="stat-card bg-white/10 rounded-xl p-2 flex flex-col items-center cursor-pointer transition-all">
                     <span class="text-[9px] uppercase opacity-70">會員</span>
-                    <span id="memberCount" class="text-lg font-black italic">0</span>
+                    <span id="memberCount" class="text-base font-black italic">0</span>
                 </div>
-                <div class="flex-1 bg-white/10 rounded-xl p-2 flex flex-col items-center">
+                <div onclick="toggleStatFilter('total')" id="stat-total" class="stat-card bg-white/10 rounded-xl p-2 flex flex-col items-center cursor-pointer transition-all">
                     <span class="text-[9px] uppercase opacity-70">總數</span>
-                    <span id="totalFocusCount" class="text-lg font-black italic">0</span>
+                    <span id="totalFocusCount" class="text-base font-black italic">0</span>
+                </div>
+                <div onclick="toggleStatFilter('lead')" id="stat-lead" class="stat-card-lead bg-rose-500/20 border border-rose-500/30 rounded-xl p-2 flex flex-col items-center cursor-pointer transition-all">
+                    <span class="text-[9px] uppercase text-rose-200">待開發</span>
+                    <span id="leadCount" class="text-base font-black italic text-rose-100">0</span>
                 </div>
             </div>
         </div>
         
         <div class="p-3 bg-blue-800">
-            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="快速搜尋夥伴..." 
-                class="w-full p-2.5 rounded-xl bg-blue-900/50 border-none text-sm text-white placeholder-blue-300 outline-none">
+            <div class="relative">
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="快速搜尋夥伴..." 
+                    class="w-full p-2.5 rounded-xl bg-blue-900/50 border-none text-sm text-white placeholder-blue-300 outline-none pr-10">
+                <div id="clearFilterBtn" onclick="clearAllFilters()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-blue-500 rounded-lg text-[10px] cursor-pointer">
+                    清除
+                </div>
+            </div>
         </div>
     </header>
+
+    <!-- 篩選狀態顯示 -->
+    <div id="filterIndicator" class="hidden px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+        <span id="filterLabel" class="text-[11px] font-bold text-blue-600 uppercase italic"></span>
+        <button onclick="clearAllFilters()" class="text-[11px] text-slate-400 underline">顯示全部結構</button>
+    </div>
 
     <!-- 組織樹容器 -->
     <main id="network-container" class="p-4 space-y-1"></main>
 
-    <!-- 編輯彈窗 (內容結構與上版相同) -->
+    <!-- 編輯彈窗 -->
     <div id="editModal" class="modal items-center justify-center p-4">
         <div class="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
             <div class="p-5 border-b flex justify-between items-center bg-slate-50">
@@ -124,7 +151,7 @@
                         <select id="editLevel" class="p-3 border rounded-xl text-sm bg-slate-50">
                             <option value="distributor">直銷商 (DD/PRO)</option>
                             <option value="member">一般會員 (MEMBER)</option>
-                            <option value="lead">潛在對象 (LEAD)</option>
+                            <option value="lead">待開發 (LEAD)</option>
                         </select>
                     </div>
                 </div>
@@ -167,13 +194,13 @@
             </div>
 
             <div class="absolute bottom-0 left-0 right-0 p-5 border-t bg-white flex gap-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-                <button onclick="saveChanges()" class="flex-[3] bg-blue-600 text-white py-4 rounded-2xl font-bold btn-active-scale shadow-lg">儲存並背景同步</button>
+                <button onclick="saveChanges()" class="flex-[3] bg-blue-600 text-white py-4 rounded-2xl font-bold btn-active-scale shadow-lg">儲存變更</button>
                 <button onclick="confirmDelete()" class="flex-1 bg-rose-50 text-rose-600 py-4 rounded-2xl font-bold btn-active-scale border border-rose-100">刪除</button>
             </div>
         </div>
     </div>
 
-    <!-- 刪除確認 (保持不變) -->
+    <!-- 刪除確認 -->
     <div id="deleteConfirmModal" class="modal items-center justify-center p-6" style="z-index: 200;">
         <div class="bg-white rounded-3xl w-full max-w-xs p-6 shadow-2xl text-center">
             <h3 class="text-lg font-bold mb-2">確定刪除此成員？</h3>
@@ -192,10 +219,9 @@
         let networkData = []; 
         let collapsedNodes = new Set();
         let currentEditId = null;
-        let currentFilter = "";
+        let currentFilterText = "";
+        let activeStatFilter = null; 
         let tempJournals = [];
-        
-        // 性能優化關鍵：同步排程器
         let syncTimeout = null;
         let isSyncing = false;
 
@@ -204,7 +230,7 @@
                 document.getElementById('loginModal').style.display = 'none';
                 document.getElementById('displayAccount').innerText = "帳號: " + currentAccount;
                 loadLocalData();
-                fetchFromCloud(); // 初始從雲端拉取
+                fetchFromCloud();
             }
         };
 
@@ -228,22 +254,14 @@
 
         function saveLocal() {
             localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
-            // 每次本地儲存後，啟動排程同步 (3秒後執行)
             scheduleSync();
         }
 
         function scheduleSync() {
             if (syncTimeout) clearTimeout(syncTimeout);
-            document.getElementById('syncStatusIcon').classList.remove('hidden');
+            document.getElementById('syncStatusIcon').classList.remove('hidden', 'syncing-icon');
             document.getElementById('syncStatusIcon').classList.add('sync-pending');
-            
-            syncTimeout = setTimeout(() => {
-                uploadToCloud();
-            }, 3000); // 延遲3秒，合併連續操作
-        }
-
-        async function forceSync() {
-            await fetchFromCloud();
+            syncTimeout = setTimeout(() => { uploadToCloud(); }, 3000); 
         }
 
         async function fetchFromCloud() {
@@ -256,7 +274,6 @@
                     ...item,
                     journals: typeof item.journals === 'string' ? JSON.parse(item.journals) : (Array.isArray(item.journals) ? item.journals : [])
                 }));
-                // 更新本地
                 localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
                 renderNetwork();
                 updateStatus("已連線", "green");
@@ -268,103 +285,167 @@
 
         async function uploadToCloud() {
             if (!currentAccount || isSyncing) return;
-            
             isSyncing = true;
-            document.getElementById('syncStatusIcon').classList.remove('sync-pending');
-            document.getElementById('syncStatusIcon').classList.add('syncing-icon');
-            
+            const icon = document.getElementById('syncStatusIcon');
+            icon.classList.remove('sync-pending', 'hidden');
+            icon.classList.add('syncing-icon');
             try {
-                const payload = networkData.map(node => ({
-                    ...node,
-                    journals: JSON.stringify(node.journals)
-                }));
-                
-                // 使用 POST 提交完整資料
-                await fetch(CLOUD_API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ accountId: currentAccount, data: payload }),
-                    mode: 'no-cors' // Google Apps Script 跨網域常用模式
-                });
-                
+                const payload = networkData.map(node => ({ ...node, journals: JSON.stringify(node.journals) }));
+                await fetch(CLOUD_API_URL, { method: 'POST', body: JSON.stringify({ accountId: currentAccount, data: payload }), mode: 'no-cors' });
                 updateStatus("已同步", "green");
             } catch (e) {
                 updateStatus("同步中斷", "orange");
             } finally {
                 isSyncing = false;
-                document.getElementById('syncStatusIcon').classList.add('hidden');
-                document.getElementById('syncStatusIcon').classList.remove('syncing-icon');
+                icon.classList.add('hidden');
+                icon.classList.remove('syncing-icon');
             }
+        }
+
+        function toggleStatFilter(type) {
+            if (activeStatFilter === type) {
+                activeStatFilter = null;
+            } else {
+                activeStatFilter = type;
+            }
+            updateStatUI();
+            renderNetwork();
+        }
+
+        function updateStatUI() {
+            document.querySelectorAll('.stat-card, .stat-card-lead').forEach(el => el.classList.remove('active'));
+            const indicator = document.getElementById('filterIndicator');
+            const label = document.getElementById('filterLabel');
+            const clearBtn = document.getElementById('clearFilterBtn');
+
+            if (activeStatFilter) {
+                const target = document.getElementById(`stat-${activeStatFilter}`);
+                if (target) target.classList.add('active');
+                indicator.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+                const labels = { distributor: '直銷商', member: '會員', total: '總名單', lead: '待開發' };
+                label.innerText = `篩選中: ${labels[activeStatFilter]}`;
+            } else {
+                indicator.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        function clearAllFilters() {
+            activeStatFilter = null;
+            currentFilterText = "";
+            document.getElementById('searchInput').value = "";
+            updateStatUI();
+            renderNetwork();
+        }
+
+        function handleSearch() {
+            currentFilterText = document.getElementById('searchInput').value.trim();
+            renderNetwork();
         }
 
         function renderNetwork() {
             updateStats();
             const container = document.getElementById('network-container');
-            const treeData = translateFlatToTree(networkData);
             container.innerHTML = '';
             
-            const isSearching = currentFilter !== "";
-            const searchLower = currentFilter.toLowerCase();
+            const isTextSearching = currentFilterText !== "";
+            const searchLower = currentFilterText.toLowerCase();
 
-            function checkMatch(node) {
-                const selfMatch = node.name.toLowerCase().includes(searchLower) || 
-                                 (node.location && node.location.toLowerCase().includes(searchLower)) ||
-                                 (node.job && node.job.toLowerCase().includes(searchLower));
-                if (selfMatch) return true;
-                if (node.children) return node.children.some(c => checkMatch(c));
-                return false;
+            // 定義：是否符合當前篩選類別
+            function matchesType(node) {
+                if (!activeStatFilter) return true;
+                if (activeStatFilter === 'distributor') return node.level === 'distributor';
+                if (activeStatFilter === 'member') return node.level === 'member';
+                if (activeStatFilter === 'lead') return node.level === 'lead';
+                if (activeStatFilter === 'total') return (node.level === 'distributor' || node.level === 'member');
+                return true;
             }
 
-            function buildHTML(node, depth = 0, isHiddenByParent = false) {
-                const hasMatchInBranch = isSearching ? checkMatch(node) : true;
-                if (isSearching && !hasMatchInBranch) return '';
+            // 定義：是否符合搜尋文字
+            function matchesSearch(node) {
+                if (!isTextSearching) return true;
+                return node.name.toLowerCase().includes(searchLower) || 
+                       (node.location && node.location.toLowerCase().includes(searchLower)) ||
+                       (node.job && node.job.toLowerCase().includes(searchLower));
+            }
 
-                const isCollapsed = collapsedNodes.has(node.id);
-                const borderColor = node.level === 'distributor' ? 'border-green-500' : (node.level === 'member' ? 'border-orange-500' : 'border-rose-500');
-                const hasChildren = node.children && node.children.length > 0;
+            // --- 核心改動：如果正在「分類篩選」，使用扁平模式 (不考慮父子級聯) ---
+            if (activeStatFilter || isTextSearching) {
+                const filteredNodes = networkData.filter(n => matchesType(n) && matchesSearch(n));
                 
-                const effectiveCollapsed = isSearching ? false : isCollapsed;
-                const displayClass = (!isSearching && isHiddenByParent) ? 'hidden' : 'block';
-
-                let html = `
-                <div class="${displayClass}" style="margin-left: ${depth * 18}px; position: relative;">
-                    ${depth > 0 ? '<div class="tree-line"></div><div class="tree-connector"></div>' : ''}
-                    <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 cursor-pointer" onclick="openEditModal('${node.id}')">
-                        <div class="mr-1 w-6 h-6 flex items-center justify-center">
-                            ${(hasChildren && !isSearching) ? `
-                                <div onclick="toggleCollapse('${node.id}', event)" class="w-full h-full flex items-center justify-center transition-transform ${effectiveCollapsed ? '' : 'rotate-90 text-blue-500'}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </div>
-                            ` : ''}
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 border text-[10px] font-bold text-slate-400">
-                            ${node.name.charAt(0)}
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-sm font-bold text-slate-800">${node.name}</div>
-                            <div class="text-[9px] text-slate-400 uppercase tracking-tighter">${node.location || '未知'} • ${node.job || '未填'}</div>
-                        </div>
-                        <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 text-lg">＋</button>
-                    </div>
-                </div>`;
-                
-                if (node.children) {
-                    node.children.forEach(c => {
-                        html += buildHTML(c, depth + 1, isHiddenByParent || effectiveCollapsed);
-                    });
+                if (filteredNodes.length === 0) {
+                    container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm">找不到符合條件的人員</div>`;
+                    return;
                 }
-                return html;
-            }
-            
-            if (networkData.length === 0) {
-                container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm italic">點擊上方「+ 頂層」開始建立</div>`;
+
+                filteredNodes.forEach(node => {
+                    const borderColor = node.level === 'distributor' ? 'border-green-500' : (node.level === 'member' ? 'border-orange-500' : 'border-rose-500');
+                    container.innerHTML += `
+                        <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 cursor-pointer" onclick="openEditModal('${node.id}')">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 border text-[10px] font-bold text-slate-400">
+                                ${node.name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-slate-800">${node.name}</div>
+                                <div class="text-[9px] text-slate-400 uppercase tracking-tighter">${node.location || '未知'} • ${node.job || '未填'}</div>
+                            </div>
+                            <div class="text-[10px] text-blue-500 font-bold px-2 py-1 bg-blue-50 rounded-lg">
+                                ${node.level === 'distributor' ? '直銷商' : (node.level === 'member' ? '會員' : '待開發')}
+                            </div>
+                        </div>
+                    `;
+                });
             } else {
+                // --- 正常模式：顯示完整的組織樹 ---
+                const treeData = translateFlatToTree(networkData);
+                if (networkData.length === 0) {
+                    container.innerHTML = `<div class="text-center py-20 text-slate-300 text-sm italic">點擊上方「+ 頂層」開始建立</div>`;
+                    return;
+                }
+
+                function buildHTML(node, depth = 0, isHiddenByParent = false) {
+                    const isCollapsed = collapsedNodes.has(node.id);
+                    const borderColor = node.level === 'distributor' ? 'border-green-500' : (node.level === 'member' ? 'border-orange-500' : 'border-rose-500');
+                    const hasChildren = node.children && node.children.length > 0;
+                    
+                    const displayClass = isHiddenByParent ? 'hidden' : 'block';
+
+                    let html = `
+                    <div class="${displayClass}" style="margin-left: ${depth * 18}px; position: relative;">
+                        ${depth > 0 ? '<div class="tree-line"></div><div class="tree-connector"></div>' : ''}
+                        <div class="relative z-10 flex items-center p-3 mb-2 rounded-2xl bg-white shadow-sm border-l-4 ${borderColor} active:bg-slate-50 cursor-pointer" onclick="openEditModal('${node.id}')">
+                            <div class="mr-1 w-6 h-6 flex items-center justify-center">
+                                ${hasChildren ? `
+                                    <div onclick="toggleCollapse('${node.id}', event)" class="w-full h-full flex items-center justify-center transition-transform ${isCollapsed ? '' : 'rotate-90 text-blue-500'}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 border text-[10px] font-bold text-slate-400">
+                                ${node.name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-sm font-bold text-slate-800">${node.name}</div>
+                                <div class="text-[9px] text-slate-400 uppercase tracking-tighter">${node.location || '未知'} • ${node.job || '未填'}</div>
+                            </div>
+                            <button onclick="event.stopPropagation(); openAddModal('${node.id}')" class="p-2 text-blue-500 text-lg">＋</button>
+                        </div>
+                    </div>`;
+                    
+                    if (node.children) {
+                        node.children.forEach(c => {
+                            html += buildHTML(c, depth + 1, isHiddenByParent || isCollapsed);
+                        });
+                    }
+                    return html;
+                }
                 treeData.forEach(root => container.innerHTML += buildHTML(root));
             }
         }
 
-        // --- 以下為通用邏輯 (保持與上版相容但優化效能) ---
         function translateFlatToTree(flatData) {
             const map = {}; const roots = [];
             flatData.forEach(node => { map[node.id] = { ...node, children: [] }; });
@@ -382,11 +463,6 @@
             renderNetwork();
         }
 
-        function handleSearch() {
-            currentFilter = document.getElementById('searchInput').value.trim();
-            renderNetwork();
-        }
-
         function openEditModal(id) {
             currentEditId = id;
             const n = networkData.find(x => x.id === id);
@@ -397,7 +473,6 @@
             document.getElementById('editJob').value = n.job || "";
             document.getElementById('editLocation').value = n.location || "";
             document.getElementById('editStatus').value = n.status || "";
-            
             tempJournals = Array.isArray(n.journals) ? [...n.journals] : [];
             renderJournals();
             
@@ -425,10 +500,7 @@
             networkData[idx].status = document.getElementById('editStatus').value;
             networkData[idx].parentId = document.getElementById('editParentId').value || null;
             networkData[idx].journals = [...tempJournals];
-            
-            saveLocal(); // 觸發本地儲存與排程同步
-            renderNetwork(); 
-            closeModal(); 
+            saveLocal(); renderNetwork(); closeModal(); 
         }
 
         function renderJournals() {
@@ -447,12 +519,11 @@
         }
 
         function addJournalEntry() {
-            const dateInput = document.getElementById('newJournalDate');
             const textInput = document.getElementById('newJournalInput');
             if (!textInput.value.trim()) return;
+            const dateInput = document.getElementById('newJournalDate');
             tempJournals.push({ date: (dateInput.value || new Date().toISOString().split('T')[0]).replace(/-/g, '/'), text: textInput.value.trim() });
-            textInput.value = '';
-            renderJournals();
+            textInput.value = ''; renderJournals();
         }
 
         function deleteJournal(i) { tempJournals.splice(i, 1); renderJournals(); }
@@ -468,17 +539,11 @@
             };
             collect(currentEditId);
             networkData = networkData.filter(n => !idsToDelete.has(n.id));
-            saveLocal(); 
-            renderNetwork(); 
-            closeDeleteConfirm(); 
-            closeModal(); 
+            saveLocal(); renderNetwork(); closeDeleteConfirm(); closeModal(); 
         }
 
         function openAddModal(pId) {
-            const newNode = { 
-                id: 'id-' + Date.now(), parentId: pId, name: '新夥伴', level: 'lead', 
-                journals: [], location: '', job: '', status: '', account_id: currentAccount
-            };
+            const newNode = { id: 'id-' + Date.now(), parentId: pId, name: '新夥伴', level: 'lead', journals: [], location: '', job: '', status: '', account_id: currentAccount };
             networkData.push(newNode);
             saveLocal(); renderNetwork(); openEditModal(newNode.id);
         }
@@ -486,9 +551,11 @@
         function updateStats() {
             const d = networkData.filter(n => n.level === 'distributor').length;
             const m = networkData.filter(n => n.level === 'member').length;
+            const l = networkData.filter(n => n.level === 'lead').length;
             document.getElementById('distributorCount').innerText = d;
             document.getElementById('memberCount').innerText = m;
-            document.getElementById('totalFocusCount').innerText = d + m;
+            document.getElementById('totalFocusCount').innerText = d + m; 
+            document.getElementById('leadCount').innerText = l;
         }
 
         function updateStatus(txt, color, pulse) {
@@ -497,6 +564,12 @@
             if(stxt) stxt.innerText = "(" + txt + ")";
             dot.className = "w-2 h-2 rounded-full mr-1 " + (pulse ? 'sync-pulse' : '');
             dot.style.backgroundColor = { blue: '#3b82f6', green: '#22c55e', red: '#ef4444', orange: '#f59e0b' }[color];
+        }
+
+        async function forceSync() {
+            if (isSyncing) return;
+            await uploadToCloud();
+            await fetchFromCloud();
         }
     </script>
 </body>
