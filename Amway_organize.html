@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Amway Pro - 組織連動管理系統</title>
+    <title>Amway Pro - 職業連動管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -20,6 +20,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .syncing-icon { animation: spin-slow 1s linear infinite; }
+        .job-tag { transition: all 0.2s ease; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-24 text-slate-900 overflow-x-hidden">
@@ -94,7 +95,7 @@
                 <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                     <svg class="w-4 h-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋姓名、編號、地區..." 
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋姓名、編號、地區、職業..." 
                     class="w-full py-3.5 pl-11 pr-12 rounded-2xl bg-white/10 focus:bg-white/20 border-none text-sm text-white placeholder-blue-300 outline-none transition-all shadow-inner">
                 <div id="clearFilterBtn" onclick="clearAllFilters()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 rounded-xl text-[10px] font-bold cursor-pointer transition-colors">清除</div>
             </div>
@@ -141,8 +142,8 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1.5">
-                        <label class="text-[10px] text-slate-400 font-black ml-1 uppercase">職業</label>
-                        <input type="text" id="editJob" class="w-full p-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl text-sm font-bold transition-all outline-none">
+                        <label class="text-[10px] text-slate-400 font-black ml-1 uppercase">職業 (輸入相同職業將自動連動)</label>
+                        <input type="text" id="editJob" placeholder="例如：工程師" class="w-full p-4 bg-amber-50/30 border-2 border-transparent focus:border-blue-500 rounded-2xl text-sm font-bold transition-all outline-none">
                     </div>
                     <div class="space-y-1.5">
                         <label class="text-[10px] text-slate-400 font-black ml-1 uppercase">地區</label>
@@ -196,12 +197,13 @@
     </div>
 
     <script>
-        // --- 核心設定 (已更新為您的實體網址) ---
+        // --- 核心設定 ---
         const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyZ75mgqzR-A_jwdfTd7nIViAnIMMlnbL_f6wP6iXGTYzgl-hM91gM_xJ58IyxRVnM/exec";
         
         let currentAccount = localStorage.getItem('amway_active_acc') || "";
         let networkData = []; 
         let globalStatsMap = {}; 
+        let jobCounts = {}; // 用於追蹤職業連動人數
         let collapsedNodes = new Set();
         let currentEditId = null;
         let currentFilterText = "";
@@ -234,8 +236,20 @@
             const raw = localStorage.getItem("amway_data_" + currentAccount);
             try {
                 networkData = raw ? JSON.parse(raw) : [];
+                calculateJobStats();
                 renderNetwork();
             } catch (e) { networkData = []; }
+        }
+
+        // 核心邏輯：計算組織內職業分布
+        function calculateJobStats() {
+            jobCounts = {};
+            networkData.forEach(node => {
+                if (node.job && node.job.trim()) {
+                    const j = node.job.trim();
+                    jobCounts[j] = (jobCounts[j] || 0) + 1;
+                }
+            });
         }
 
         async function fetchFromCloud() {
@@ -245,16 +259,15 @@
                 const res = await fetch(`${CLOUD_API_URL}?accountId=${currentAccount}`);
                 const result = await res.json();
                 
-                // 處理個人資料
                 networkData = (result.personal || []).map(item => ({
                     ...item,
                     journals: typeof item.journals === 'string' ? JSON.parse(item.journals) : item.journals
                 }));
 
-                // 處理全局連動數據
                 globalStatsMap = result.globalStats || {};
                 
                 localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
+                calculateJobStats();
                 renderNetwork();
                 updateStatus("已更新", "green");
             } catch (e) {
@@ -285,6 +298,7 @@
 
         function saveLocal() {
             localStorage.setItem("amway_data_" + currentAccount, JSON.stringify(networkData));
+            calculateJobStats();
             if (syncTimeout) clearTimeout(syncTimeout);
             syncTimeout = setTimeout(uploadToCloud, 3000);
         }
@@ -296,7 +310,6 @@
                 else if (node.level === 'member') m++;
                 else if (node.level === 'lead') l++;
 
-                // 連動加總：若 ID 不同於登入者且存在於全局統計中
                 if (node.amway_id && node.amway_id !== currentAccount && globalStatsMap[node.amway_id]) {
                     const stats = globalStatsMap[node.amway_id];
                     d += (stats.distributor || 0);
@@ -328,7 +341,9 @@
 
             function matchesSearch(node) {
                 if (!currentFilterText) return true;
-                return node.name.toLowerCase().includes(searchLower) || (node.amway_id && node.amway_id.includes(searchLower));
+                return node.name.toLowerCase().includes(searchLower) || 
+                       (node.amway_id && node.amway_id.includes(searchLower)) ||
+                       (node.job && node.job.toLowerCase().includes(searchLower));
             }
 
             if (isFiltering) {
@@ -353,6 +368,11 @@
             const levelLabel = node.level === 'distributor' ? '直銷商' : (node.level === 'member' ? '會員' : '待開發');
             const levelBg = node.level === 'distributor' ? 'bg-emerald-50 text-emerald-600' : (node.level === 'member' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600');
             const isLinked = node.amway_id && node.amway_id !== currentAccount && globalStatsMap[node.amway_id];
+            
+            // 職業連動邏輯
+            const jobName = node.job || "";
+            const jobLinkCount = jobCounts[jobName] || 0;
+            const showJobLink = jobName && jobLinkCount > 1;
 
             return `
                 <div class="node-card" style="${isHidden ? 'display: none;' : 'display: block;'} margin-left: ${depth * 20}px; position: relative;">
@@ -369,9 +389,19 @@
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-black text-slate-800">${node.name}</span>
                                 ${isLinked ? `<span class="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[8px] font-black border border-blue-100 flex items-center gap-1">
-                                    <span class="w-1 h-1 bg-blue-600 rounded-full animate-pulse"></span>連動中</span>` : ''}
+                                    <span class="w-1 h-1 bg-blue-600 rounded-full animate-pulse"></span>組織連動</span>` : ''}
                             </div>
-                            <div class="text-[9px] text-slate-400 font-bold mt-0.5">ID: ${node.amway_id || '未填'} • ${node.location || '地區未填'}</div>
+                            <div class="flex flex-wrap items-center gap-x-2 mt-0.5">
+                                <span class="text-[9px] text-slate-400 font-bold">ID: ${node.amway_id || '未填'}</span>
+                                <span class="text-[9px] text-slate-300">•</span>
+                                <span class="text-[9px] text-slate-400 font-bold">${node.location || '地區未填'}</span>
+                                ${jobName ? `
+                                    <span class="text-[9px] text-slate-300">•</span>
+                                    <span class="text-[9px] ${showJobLink ? 'text-amber-600 font-black' : 'text-slate-500 font-bold'}">
+                                        💼 ${jobName} ${showJobLink ? `(職業連動: ${jobLinkCount})` : ''}
+                                    </span>
+                                ` : ''}
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="text-[9px] font-black px-2 py-1 ${levelBg} rounded-lg uppercase">${levelLabel}</div>
@@ -426,7 +456,7 @@
             networkData[idx].name = document.getElementById('editName').value || "新成員";
             networkData[idx].amway_id = document.getElementById('editAmwayId').value.trim();
             networkData[idx].level = document.getElementById('editLevel').value;
-            networkData[idx].job = document.getElementById('editJob').value;
+            networkData[idx].job = document.getElementById('editJob').value.trim();
             networkData[idx].location = document.getElementById('editLocation').value;
             networkData[idx].status = document.getElementById('editStatus').value;
             networkData[idx].parentId = document.getElementById('editParentId').value || null;
@@ -446,19 +476,19 @@
             const l = document.getElementById('journalList');
             document.getElementById('journalCount').innerText = tempJournals.length;
             l.innerHTML = tempJournals.map((j, i) => `
-                <div class="bg-white p-4 rounded-2xl flex justify-between items-start border border-slate-100">
+                <div class="bg-white p-4 rounded-2xl flex justify-between items-start border border-slate-100 shadow-sm">
                     <div>
                         <div class="text-[9px] font-black text-blue-500 mb-1">${j.date}</div>
                         <div class="text-xs font-bold text-slate-700">${j.text}</div>
                     </div>
-                    <button onclick="deleteJournal(${i})" class="text-slate-300">&times;</button>
+                    <button onclick="deleteJournal(${i})" class="text-slate-300 hover:text-rose-500 transition-colors">&times;</button>
                 </div>
             `).reverse().join('');
         }
 
         function deleteJournal(i) { tempJournals.splice(i, 1); renderJournals(); }
         function closeModal() { document.getElementById('editModal').classList.remove('active'); }
-        function openAddModal(p) { const id = 'id-' + Date.now(); networkData.push({ id, name: "新成員", level: "lead", parentId: p, journals: [] }); saveLocal(); renderNetwork(); openEditModal(id); }
+        function openAddModal(p) { const id = 'id-' + Date.now(); networkData.push({ id, name: "新成員", level: "lead", job: "", parentId: p, journals: [] }); saveLocal(); renderNetwork(); openEditModal(id); }
         function confirmDelete() { document.getElementById('deleteConfirmModal').classList.add('active'); }
         function closeDeleteConfirm() { document.getElementById('deleteConfirmModal').classList.remove('active'); }
         function executeDelete() { networkData = networkData.filter(n => n.id !== currentEditId); saveLocal(); renderNetwork(); closeDeleteConfirm(); closeModal(); }
