@@ -56,7 +56,12 @@
             transition: width 0.5s ease-in-out;
         }
 
-        /* 偽全螢幕樣式 (當原生 API 被限制時使用) */
+        /* 全螢幕/偽全螢幕時隱藏特定元素 */
+        .is-fs .fs-hidden {
+            display: none !important;
+        }
+
+        /* 偽全螢幕樣式 */
         .pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -66,11 +71,28 @@
             z-index: 9999 !important;
             background-color: #f0f4f0 !important;
             margin: 0 !important;
-            padding: 2rem !important;
-            overflow-y: auto !important;
+            padding: 0 !important;
+            overflow: hidden !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* 全螢幕模式下的容器調整 */
+        .is-fs #contentContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .is-fs main {
+            max-width: 900px;
+            width: 95%;
         }
 
         /* 原生全螢幕樣式 */
@@ -79,24 +101,30 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 2rem;
-            overflow-y: auto;
+            justify-content: center;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* 確保全螢幕按鈕在任何情況下都可用 */
+        #actionHeader {
+            z-index: 10000;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8 transition-all" id="mainBody">
 
-    <!-- Header Actions -->
+    <!-- Header Actions (始終顯示，方便隨時退出) -->
     <div class="w-full max-w-2xl flex justify-end mb-2" id="actionHeader">
-        <button onclick="handleFullscreenToggle()" class="flex items-center gap-2 px-3 py-1 bg-white/50 hover:bg-white rounded-lg text-gray-600 text-sm font-medium transition-all border border-gray-200 shadow-sm">
+        <button onclick="handleFullscreenToggle()" class="flex items-center gap-2 px-3 py-1 bg-white/70 hover:bg-white rounded-lg text-gray-600 text-sm font-medium transition-all border border-gray-200 shadow-sm">
             <span id="fullscreenIcon">📺</span> <span id="fullscreenText">進入全螢幕</span>
         </button>
     </div>
 
     <!-- Container for Fullscreen Content -->
     <div id="contentContainer" class="w-full flex flex-col items-center">
-        <!-- Header -->
-        <header class="w-full max-w-2xl text-center mb-8">
+        <!-- Header (全螢幕時隱藏) -->
+        <header class="w-full max-w-2xl text-center mb-8 fs-hidden">
             <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.2</h1>
             <p class="text-green-600">「不懂就問科學人」全平台精選題庫（不重複版）</p>
         </header>
@@ -104,8 +132,8 @@
         <!-- Main Controller -->
         <main class="w-full max-w-2xl bg-white rounded-3xl p-6 md:p-10 card-shadow relative overflow-hidden mb-8">
             
-            <!-- Category Filter -->
-            <div class="mb-6">
+            <!-- Category Filter (全螢幕時隱藏) -->
+            <div class="mb-6 fs-hidden">
                 <div class="flex justify-between items-end mb-2">
                     <label class="text-sm font-medium text-gray-500">篩選特定類別：</label>
                     <span class="text-xs text-gray-400">目前類別剩餘：<span id="categoryRemaining" class="font-bold text-green-600">0</span> 題</span>
@@ -120,11 +148,11 @@
             </div>
 
             <!-- Question Display Area -->
-            <div class="bg-green-50 rounded-2xl p-8 min-h-[260px] flex flex-col items-center justify-center text-center border-2 border-dashed border-green-200 mb-6 transition-all relative" id="displayBox">
-                <div id="birdEmoji" class="text-5xl mb-4 bird-icon">🕊️</div>
-                <div id="questionCategory" class="text-xs font-bold tracking-widest text-green-500 uppercase mb-2">Ready?</div>
-                <div id="questionText" class="text-xl md:text-2xl font-bold text-gray-800 leading-relaxed px-2">
-                    點擊下方按鈕開始抽選！<br><span class="text-sm font-normal text-gray-400">抽過的題目在重設前不會再次出現</span>
+            <div class="bg-green-50 rounded-2xl p-8 min-h-[300px] flex flex-col items-center justify-center text-center border-2 border-dashed border-green-200 mb-6 transition-all relative" id="displayBox">
+                <div id="birdEmoji" class="text-6xl mb-4 bird-icon">🕊️</div>
+                <div id="questionCategory" class="text-sm font-bold tracking-widest text-green-500 uppercase mb-2">已就緒</div>
+                <div id="questionText" class="text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed px-2">
+                    點擊下方按鈕開始抽選！
                 </div>
 
                 <!-- Progress in box -->
@@ -135,11 +163,11 @@
 
             <!-- Action Buttons -->
             <div class="flex flex-col gap-4">
-                <button id="drawBtn" onclick="drawQuestion()" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-xl btn-hover flex items-center justify-center gap-2 shadow-md">
+                <button id="drawBtn" onclick="drawQuestion()" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-2xl btn-hover flex items-center justify-center gap-2 shadow-md">
                     <span id="btnText">🎲 隨機抽取題目</span>
                 </button>
                 
-                <div class="flex justify-between items-center px-2">
+                <div class="flex justify-between items-center px-2 fs-hidden">
                     <button onclick="toggleList()" class="text-green-600 font-medium hover:underline text-sm py-2">
                         瀏覽題目清單 (<span id="countSpan">0</span>)
                     </button>
@@ -149,8 +177,8 @@
                 </div>
             </div>
 
-            <!-- List Section (Hidden by default) -->
-            <div id="listSection" class="hidden mt-8 border-t pt-6">
+            <!-- List Section (全螢幕時隱藏) -->
+            <div id="listSection" class="hidden mt-8 border-t pt-6 fs-hidden">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-gray-700">題目清單 (灰色為已抽過)</h3>
                 </div>
@@ -160,9 +188,9 @@
             </div>
         </main>
 
-        <!-- Footer -->
-        <footer class="mt-4 text-center text-gray-400 text-xs pb-12">
-            <p>資料來源：Facebook 專頁「SA Taiwan」讀者留言整理</p>
+        <!-- Footer (全螢幕時隱藏) -->
+        <footer class="mt-4 text-center text-gray-400 text-xs pb-12 fs-hidden">
+            <p>資料來源：Facebook 專頁「SA Taiwan」及讀者留言整理</p>
         </footer>
     </div>
 
@@ -246,6 +274,7 @@
         const poolProgress = document.getElementById('poolProgress');
         const categoryRemaining = document.getElementById('categoryRemaining');
         const countSpan = document.getElementById('countSpan');
+        const body = document.getElementById('mainBody');
 
         function getPool() {
             if (currentCategory === 'all') return allQuestions;
@@ -294,16 +323,19 @@
                 btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-500');
                 btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
             });
-            document.getElementById('btn-' + cat).classList.add('bg-green-100', 'text-green-700', 'border-green-500');
-            document.getElementById('btn-' + cat).classList.remove('bg-gray-100', 'text-gray-600', 'border-transparent');
+            const targetBtn = document.getElementById('btn-' + cat);
+            if (targetBtn) {
+                targetBtn.classList.add('bg-green-100', 'text-green-700', 'border-green-500');
+                targetBtn.classList.remove('bg-gray-100', 'text-gray-600', 'border-transparent');
+            }
             updateUI();
             
             const available = getAvailablePool();
             if (available.length > 0) {
-                questionText.innerHTML = `已切換至「${getCategoryNameOnly(cat)}」類別<br><span class="text-sm font-normal text-gray-400">尚有 ${available.length} 題未抽選</span>`;
+                questionText.innerHTML = `已切換至「${getCategoryNameOnly(cat)}」<br><span class="text-sm font-normal text-gray-400">尚有 ${available.length} 題未抽選</span>`;
                 questionCategory.innerText = "切換成功";
             } else {
-                questionText.innerHTML = `「${getCategoryNameOnly(cat)}」類別題目已全部抽完！<br><span class="text-sm font-normal text-gray-400">請按下方重設按鈕或換個類別</span>`;
+                questionText.innerHTML = `「${getCategoryNameOnly(cat)}」已全部抽完！<br><span class="text-sm font-normal text-gray-400">請重設或換個類別</span>`;
                 questionCategory.innerText = "POOL EMPTY";
             }
         }
@@ -357,21 +389,15 @@
             }
         }
 
-        // 修改全螢幕處理邏輯：優先嘗試原生 API，失敗時使用偽全螢幕
         function handleFullscreenToggle() {
-            const body = document.getElementById('mainBody');
-            
             if (!document.fullscreenElement && !body.classList.contains('pseudo-fullscreen')) {
-                // 嘗試原生全螢幕
                 document.documentElement.requestFullscreen().then(() => {
-                    // 成功進入原生全螢幕，UI 會透過事件監聽更新
+                    // Success handled by event listener
                 }).catch(err => {
                     console.warn(`原生全螢幕被封鎖: ${err.message}`);
-                    // 失敗時使用偽全螢幕
                     enterPseudoFullscreen();
                 });
             } else {
-                // 退出邏輯
                 if (document.fullscreenElement) {
                     document.exitFullscreen();
                 } else {
@@ -381,17 +407,13 @@
         }
 
         function enterPseudoFullscreen() {
-            const body = document.getElementById('mainBody');
-            body.classList.add('pseudo-fullscreen');
+            body.classList.add('pseudo-fullscreen', 'is-fs');
             updateFullscreenUI(true);
-            
-            // 監聽 Esc 鍵退出偽全螢幕
             window.addEventListener('keydown', escListener);
         }
 
         function exitPseudoFullscreen() {
-            const body = document.getElementById('mainBody');
-            body.classList.remove('pseudo-fullscreen');
+            body.classList.remove('pseudo-fullscreen', 'is-fs');
             updateFullscreenUI(false);
             window.removeEventListener('keydown', escListener);
         }
@@ -406,9 +428,11 @@
             if (isFull) {
                 icon.innerText = "退出";
                 text.innerText = "結束全螢幕";
+                body.classList.add('is-fs');
             } else {
                 icon.innerText = "📺";
                 text.innerText = "進入全螢幕";
+                body.classList.remove('is-fs');
             }
         }
 
