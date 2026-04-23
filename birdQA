@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【不懂就問科學人】鳥問題抽選器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f4f0;
+            background-image: radial-gradient(#d1dbd1 1px, transparent 1px);
+            background-size: 20px 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .rolling-animation {
+            animation: roll 0.1s infinite linear;
+        }
+
+        @keyframes roll {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-10px); opacity: 0.5; }
+        }
+
+        .btn-hover {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-hover:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .bird-icon {
+            display: inline-block;
+            transition: transform 0.5s ease;
+        }
+
+        .rolling .bird-icon {
+            animation: bounce 0.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-10px) rotate(10deg); }
+        }
+
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* 偽全螢幕樣式 (當原生 API 被限制時使用) */
+        .pseudo-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            background-color: #f0f4f0 !important;
+            margin: 0 !important;
+            padding: 2rem !important;
+            overflow-y: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+        }
+
+        /* 原生全螢幕樣式 */
+        :fullscreen {
+            background-color: #f0f4f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8 transition-all" id="mainBody">
+
+    <!-- Header Actions -->
+    <div class="w-full max-w-2xl flex justify-end mb-2" id="actionHeader">
+        <button onclick="handleFullscreenToggle()" class="flex items-center gap-2 px-3 py-1 bg-white/50 hover:bg-white rounded-lg text-gray-600 text-sm font-medium transition-all border border-gray-200 shadow-sm">
+            <span id="fullscreenIcon">📺</span> <span id="fullscreenText">進入全螢幕</span>
+        </button>
+    </div>
+
+    <!-- Container for Fullscreen Content -->
+    <div id="contentContainer" class="w-full flex flex-col items-center">
+        <!-- Header -->
+        <header class="w-full max-w-2xl text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.2</h1>
+            <p class="text-green-600">「不懂就問科學人」全平台精選題庫（不重複版）</p>
+        </header>
+
+        <!-- Main Controller -->
+        <main class="w-full max-w-2xl bg-white rounded-3xl p-6 md:p-10 card-shadow relative overflow-hidden mb-8">
+            
+            <!-- Category Filter -->
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="text-sm font-medium text-gray-500">篩選特定類別：</label>
+                    <span class="text-xs text-gray-400">目前類別剩餘：<span id="categoryRemaining" class="font-bold text-green-600">0</span> 題</span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2" id="categoryButtons">
+                    <button onclick="filterCategory('all')" id="btn-all" class="px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-bold border-2 border-green-500">全部顯示</button>
+                    <button onclick="filterCategory('生理')" id="btn-生理" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">生理機能</button>
+                    <button onclick="filterCategory('習性')" id="btn-習性" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">行為習性</button>
+                    <button onclick="filterCategory('生態')" id="btn-生態" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">生態種類</button>
+                    <button onclick="filterCategory('實務')" id="btn-實務" class="px-4 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">實務與日常</button>
+                </div>
+            </div>
+
+            <!-- Question Display Area -->
+            <div class="bg-green-50 rounded-2xl p-8 min-h-[260px] flex flex-col items-center justify-center text-center border-2 border-dashed border-green-200 mb-6 transition-all relative" id="displayBox">
+                <div id="birdEmoji" class="text-5xl mb-4 bird-icon">🕊️</div>
+                <div id="questionCategory" class="text-xs font-bold tracking-widest text-green-500 uppercase mb-2">Ready?</div>
+                <div id="questionText" class="text-xl md:text-2xl font-bold text-gray-800 leading-relaxed px-2">
+                    點擊下方按鈕開始抽選！<br><span class="text-sm font-normal text-gray-400">抽過的題目在重設前不會再次出現</span>
+                </div>
+
+                <!-- Progress in box -->
+                <div class="absolute bottom-0 left-0 w-full h-1.5 bg-green-100">
+                    <div id="poolProgress" class="h-full bg-green-500 progress-bar" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-4">
+                <button id="drawBtn" onclick="drawQuestion()" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-xl btn-hover flex items-center justify-center gap-2 shadow-md">
+                    <span id="btnText">🎲 隨機抽取題目</span>
+                </button>
+                
+                <div class="flex justify-between items-center px-2">
+                    <button onclick="toggleList()" class="text-green-600 font-medium hover:underline text-sm py-2">
+                        瀏覽題目清單 (<span id="countSpan">0</span>)
+                    </button>
+                    <button id="resetBtn" onclick="resetPool()" class="text-gray-400 hover:text-red-500 font-medium text-sm py-2 transition-colors">
+                        🔄 重設所有題目
+                    </button>
+                </div>
+            </div>
+
+            <!-- List Section (Hidden by default) -->
+            <div id="listSection" class="hidden mt-8 border-t pt-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-gray-700">題目清單 (灰色為已抽過)</h3>
+                </div>
+                <div id="fullList" class="space-y-3 max-h-80 overflow-y-auto pr-2 text-sm text-gray-600 text-left">
+                    <!-- List items injected by JS -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-4 text-center text-gray-400 text-xs pb-12">
+            <p>資料來源：Facebook 專頁「SA Taiwan」讀者留言整理</p>
+        </footer>
+    </div>
+
+    <script>
+        const allQuestions = [
+            // 生理機能
+            { id: 1, category: "生理", text: "為什麼五色鳥似乎特別容易撞玻璃（窗殺）？機率是否與物種有關？為什麼很少聽到鸚鵡撞窗？" },
+            { id: 2, category: "生理", text: "鳥類有味覺嗎？挑選食物的準則為何？寵物鳥挑食怎麼辦？" },
+            { id: 3, category: "生理", text: "鳥看色彩與人類一樣嗎？眼中的世界是不是慢動作？" },
+            { id: 4, category: "生理", text: "鳥感冒會失聲嗎？台灣山林的鳥能發出幾種叫聲？" },
+            { id: 5, category: "生理", text: "為什麼鳥排泄時菊花能保持乾淨不沾毛？鸚鵡糞便乾掉後的結晶是什麼？" },
+            { id: 6, category: "生理", text: "雛鳥的糞囊生理機制是什麼？為什麼長大就消失了？" },
+            { id: 7, category: "生理", text: "為什麼鳥類可以透過很短暫的睡眠就能恢復體力？" },
+            { id: 8, category: "生理", text: "都市三寶有幾對染色體？鳥類會突變的病有哪些？" },
+            { id: 9, category: "生理", text: "換羽是全身換嗎？羽毛數量每隻都一樣嗎？顏色生成的決定因素？" },
+            { id: 10, category: "生理", text: "溫度或大氣壓力的改變，有可能會改變鳥的毛色嗎？" },
+            { id: 11, category: "生理", text: "為什麼鸚鵡能單腳拿東西？為什麼水鳥愛單腳站？" },
+            { id: 12, category: "生理", text: "為什麼有些鳥用走的，有些用跳的，有些兩者皆可？" },
+            { id: 13, category: "生理", text: "雞冠的功能是什麼？鳥類交配時是如何精準對準的？" },
+            { id: 14, category: "生理", text: "雞真的是恐龍後代嗎？恐龍是鳥，還是鳥是恐龍？" },
+            { id: 44, category: "生理", text: "鳥類的瞳孔顏色為什麼不同？不同顏色（紅色、橘色等）在構造與功能上有差異嗎？" },
+            { id: 45, category: "生理", text: "日行性鳥類都有夜盲症嗎？" },
+            { id: 46, category: "生理", text: "鳥類快速爬升高度時會不會有高山症？牠們如何調節低氣壓或氧氣變化？" },
+            { id: 55, category: "生理", text: "鳥太胖真的會飛不起來嗎？為什麼鳥會飛，人類卻不會？" },
+            { id: 56, category: "生理", text: "為什麼亞成鳥的毛色要跟成鳥不一樣？鳥類也會有頭皮屑嗎？" },
+
+            // 行為與習性
+            { id: 16, category: "習性", text: "鳥大也會十八變嗎？有沒有認識鳥寶寶的圖鑑？" },
+            { id: 17, category: "習性", text: "看到猛禽追殺弱小鳥類，介入救牠還是讓達爾文演化論做事才是正確的？" },
+            { id: 18, category: "習性", text: "鳥巢真的只為育雛嗎？平常是不是完全不回去窩著？" },
+            { id: 19, category: "習性", text: "夜鷺用吐司誘捕魚是本能，還是鳥也有這種心機思考能力？" },
+            { id: 20, category: "習性", text: "啄木鳥或擬啄木真的會故意在木頭鑿洞引誘蟲子再來吃嗎？" },
+            { id: 21, category: "習性", text: "鳥類聚在一起「開會」時到底在討論什麼？" },
+            { id: 22, category: "習性", text: "雀鳥為什麼會拔光室友的毛？鳥會認得主人嗎？" },
+            { id: 23, category: "習性", text: "鳥一生可以生幾次蛋？蛋的大小影響因素是什麼？" },
+            { id: 24, category: "習性", text: "大冠鷲吃毒蛇會中毒嗎？大卷尾真的是猛禽嗎？" },
+            { id: 47, category: "習性", text: "為什麼有些鳥（如鶺鴒、磯鷸）會一直搖尾巴？搖尾巴的功能是什麼？" },
+            { id: 48, category: "習性", text: "為什麼有些鳥特別喜歡停在某些人造結構（如電線、招牌）上？" },
+            { id: 49, category: "習性", text: "小鳥是否有性格差異？例如有的外向大膽，有的內向害羞？" },
+
+            // 生態種類與環境
+            { id: 26, category: "生態", text: "隨便鳩（珠頸斑鳩）真的很隨便嗎？築巢這麼簡陋為何能生存？" },
+            { id: 27, category: "生態", text: "八哥真的會攻擊其他小型鳥嗎？有辦法限制外來種八哥嗎？" },
+            { id: 28, category: "生態", text: "飛在空中的小雨燕、家燕、洋燕、金腰燕要怎麼快速區分？" },
+            { id: 29, category: "生態", text: "如何說服政府保護台南歸仁東方草鴞的棲地？" },
+            { id: 30, category: "生態", text: "為什麼綠啄木很難看到？紫嘯鶇為什麼近年越來越常出現在住宅區？" },
+            { id: 31, category: "生態", text: "Merlin 軟體辨識罕見鳥種的可靠性如何？" },
+            { id: 32, category: "生態", text: "黃頭鷺吃班腿樹蛙，是否有抑制外來種族群的相關研究？" },
+            { id: 33, category: "生態", text: "目前公認最難拍的台灣鳥種是什麼？啄木鳥和五色鳥關係近嗎？" },
+            { id: 34, category: "生態", text: "肌肉量最低的鳥類是哪種？" },
+            { id: 35, category: "生態", text: "杜鵑為何啼血？麻雀雖小是真的「雖小」嗎？" },
+            { id: 36, category: "生態", text: "鴞鸚鵡可以摸嗎？喜鵲翻白眼出現的螢光橘色是什麼？" },
+            { id: 37, category: "生態", text: "黑冠麻鷺的食繭值得收藏嗎？裡面會有驚喜嗎？" },
+            { id: 50, category: "生態", text: "五色鳥通常分布在什麼海拔？牠們啄出的樹洞會對樹木健康造成影響嗎？" },
+            { id: 54, category: "生態", text: "為什麼大笨鳥（黑冠麻鷺）叫大笨鳥？為什麼校園裡常看到牠們？" },
+            { id: 57, category: "生態", text: "鴿子花紋的多樣性：為什麼有些鴿子頭上或身體有斑點，有些甚至是全白或全黑？" },
+
+            // 實務與日常互動
+            { id: 39, category: "實務", text: "路上看到小鳥（或幼鳥）該怎麼辦？如果遇到的是外來種又該如何處理？" },
+            { id: 40, category: "實務", text: "如何檢舉才能有效杜絕私養野鳥的問題？" },
+            { id: 41, category: "實務", text: "最推薦給入門者的望遠鏡是什麼？" },
+            { id: 42, category: "實務", text: "去日本鳩吹山可以做什麼？" },
+            { id: 43, category: "實務", text: "林大利老師個人覺得哪種鳥最漂亮、哪種鳥習性最有趣？" },
+            { id: 51, category: "實務", text: "可以在家裡頂樓放鳥飼料讓小鳥自行取食嗎？對環境有什麼影響？" },
+            { id: 52, category: "實務", text: "如何避免鳥在家門口或特定位置排泄？有什麼友善的驅離法嗎？" },
+            { id: 53, category: "實務", text: "地瓜為什麼走路這麼慢？（迷隱/非鳥類問題）" },
+            { id: 58, category: "實務", text: "鳥類健康問題：5歲八哥腳爪角質增生如何處理？鴿子糞便是否有毒？" },
+            { id: 59, category: "實務", text: "趣味迷因：貓爬到樹上會變成貓頭鷹嗎？被鳥屎砸到真的會中樂透嗎？" }
+        ];
+
+        let drawnIds = new Set();
+        let currentCategory = 'all';
+        const birdEmojis = ["🕊️", "🦜", "🦆", "🦢", "🦉", "🐦", "🦅", "🐧", "🦚", "🐓", "🐥", "🐣"];
+        
+        const displayBox = document.getElementById('displayBox');
+        const questionText = document.getElementById('questionText');
+        const questionCategory = document.getElementById('questionCategory');
+        const birdEmojiDisp = document.getElementById('birdEmoji');
+        const drawBtn = document.getElementById('drawBtn');
+        const btnText = document.getElementById('btnText');
+        const poolProgress = document.getElementById('poolProgress');
+        const categoryRemaining = document.getElementById('categoryRemaining');
+        const countSpan = document.getElementById('countSpan');
+
+        function getPool() {
+            if (currentCategory === 'all') return allQuestions;
+            return allQuestions.filter(q => q.category === currentCategory);
+        }
+
+        function getAvailablePool() {
+            return getPool().filter(q => !drawnIds.has(q.id));
+        }
+
+        function updateUI() {
+            const pool = getPool();
+            const available = getAvailablePool();
+            
+            categoryRemaining.innerText = available.length;
+            countSpan.innerText = pool.length;
+            
+            const percent = pool.length === 0 ? 0 : (available.length / pool.length) * 100;
+            poolProgress.style.width = percent + "%";
+            
+            if (available.length === 0) {
+                drawBtn.disabled = true;
+                btnText.innerText = "本類別題目已抽完";
+            } else {
+                drawBtn.disabled = false;
+                btnText.innerText = "🎲 隨機抽取題目";
+            }
+
+            const listEl = document.getElementById('fullList');
+            listEl.innerHTML = pool.map(q => {
+                const isDrawn = drawnIds.has(q.id);
+                return `
+                    <div class="p-3 rounded-lg border-l-4 ${isDrawn ? 'bg-gray-100 border-gray-300 text-gray-400' : 'bg-green-50 border-green-500 text-gray-700'} transition-all">
+                        <span class="text-[10px] font-bold ${isDrawn ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-600'} px-1.5 py-0.5 rounded mr-2 uppercase">${q.category}</span>
+                        ${isDrawn ? '<span class="mr-1">✔️</span>' : ''}
+                        <span>${q.text}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            const btns = document.querySelectorAll('#categoryButtons button');
+            btns.forEach(btn => {
+                btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-500');
+                btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
+            });
+            document.getElementById('btn-' + cat).classList.add('bg-green-100', 'text-green-700', 'border-green-500');
+            document.getElementById('btn-' + cat).classList.remove('bg-gray-100', 'text-gray-600', 'border-transparent');
+            updateUI();
+            
+            const available = getAvailablePool();
+            if (available.length > 0) {
+                questionText.innerHTML = `已切換至「${getCategoryNameOnly(cat)}」類別<br><span class="text-sm font-normal text-gray-400">尚有 ${available.length} 題未抽選</span>`;
+                questionCategory.innerText = "切換成功";
+            } else {
+                questionText.innerHTML = `「${getCategoryNameOnly(cat)}」類別題目已全部抽完！<br><span class="text-sm font-normal text-gray-400">請按下方重設按鈕或換個類別</span>`;
+                questionCategory.innerText = "POOL EMPTY";
+            }
+        }
+
+        function getCategoryNameOnly(cat) {
+            const map = { 'all': '全部題目', '生理': '生理機能', '習性': '行為習性', '生態': '生態種類', '實務': '實務與日常' };
+            return map[cat];
+        }
+
+        function drawQuestion() {
+            const available = getAvailablePool();
+            if (available.length === 0) return;
+            drawBtn.disabled = true;
+            displayBox.classList.add('rolling');
+            questionText.classList.add('rolling-animation');
+            let counter = 0;
+            const maxCycles = 15;
+            const interval = setInterval(() => {
+                const tempIdx = Math.floor(Math.random() * available.length);
+                questionText.innerText = available[tempIdx].text;
+                birdEmojiDisp.innerText = birdEmojis[Math.floor(Math.random() * birdEmojis.length)];
+                counter++;
+                if (counter >= maxCycles) {
+                    clearInterval(interval);
+                    finalizeDraw(available);
+                }
+            }, 70);
+        }
+
+        function finalizeDraw(availablePool) {
+            const finalIdx = Math.floor(Math.random() * availablePool.length);
+            const selected = availablePool[finalIdx];
+            drawnIds.add(selected.id);
+            questionText.innerText = selected.text;
+            questionCategory.innerText = getCategoryFullName(selected.category);
+            questionText.classList.remove('rolling-animation');
+            displayBox.classList.remove('rolling');
+            updateUI();
+            displayBox.classList.add('scale-105', 'border-green-400', 'ring-4', 'ring-green-100');
+            setTimeout(() => {
+                displayBox.classList.remove('scale-105', 'border-green-400', 'ring-4', 'ring-green-100');
+            }, 400);
+        }
+
+        function resetPool() {
+            if (confirm("確定要重設所有題目嗎？（這將清除所有已抽過的紀錄）")) {
+                drawnIds.clear();
+                updateUI();
+                questionText.innerHTML = "所有題目已重新洗牌！<br><span class='text-sm font-normal text-gray-400'>可以重新開始抽選了</span>";
+                questionCategory.innerText = "RE-SHUFFLED";
+            }
+        }
+
+        // 修改全螢幕處理邏輯：優先嘗試原生 API，失敗時使用偽全螢幕
+        function handleFullscreenToggle() {
+            const body = document.getElementById('mainBody');
+            
+            if (!document.fullscreenElement && !body.classList.contains('pseudo-fullscreen')) {
+                // 嘗試原生全螢幕
+                document.documentElement.requestFullscreen().then(() => {
+                    // 成功進入原生全螢幕，UI 會透過事件監聽更新
+                }).catch(err => {
+                    console.warn(`原生全螢幕被封鎖: ${err.message}`);
+                    // 失敗時使用偽全螢幕
+                    enterPseudoFullscreen();
+                });
+            } else {
+                // 退出邏輯
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    exitPseudoFullscreen();
+                }
+            }
+        }
+
+        function enterPseudoFullscreen() {
+            const body = document.getElementById('mainBody');
+            body.classList.add('pseudo-fullscreen');
+            updateFullscreenUI(true);
+            
+            // 監聽 Esc 鍵退出偽全螢幕
+            window.addEventListener('keydown', escListener);
+        }
+
+        function exitPseudoFullscreen() {
+            const body = document.getElementById('mainBody');
+            body.classList.remove('pseudo-fullscreen');
+            updateFullscreenUI(false);
+            window.removeEventListener('keydown', escListener);
+        }
+
+        function escListener(e) {
+            if (e.key === 'Escape') exitPseudoFullscreen();
+        }
+
+        function updateFullscreenUI(isFull) {
+            const icon = document.getElementById('fullscreenIcon');
+            const text = document.getElementById('fullscreenText');
+            if (isFull) {
+                icon.innerText = "退出";
+                text.innerText = "結束全螢幕";
+            } else {
+                icon.innerText = "📺";
+                text.innerText = "進入全螢幕";
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            updateFullscreenUI(!!document.fullscreenElement);
+        });
+
+        function getCategoryFullName(cat) {
+            const map = { "生理": "🌿 生理機能與構造", "習性": "🤔 行為與習性", "生態": "🌏 生態種類與環境", "實務": "🏠 實務與日常互動" };
+            return map[cat] || "精選問題";
+        }
+
+        function toggleList() {
+            document.getElementById('listSection').classList.toggle('hidden');
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
