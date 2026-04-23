@@ -98,7 +98,7 @@
             box-shadow: none !important;
         }
 
-        /* 全螢幕下的圖卡：變成可點擊的主體 */
+        /* 全螢幕下的圖卡 */
         .is-fs #displayBox {
             cursor: pointer;
             width: 100% !important;
@@ -120,11 +120,14 @@
             border-color: #10b981;
         }
 
-        .is-fs #displayBox:active {
-            transform: scale(0.98);
+        /* 休息中樣式 */
+        .is-resting {
+            background-color: #ecfdf5 !important;
+            border-color: #34d399 !important;
+            border-style: solid !important;
         }
 
-        /* 全螢幕下的字體與圖示放大 */
+        /* 全螢幕下的字體放大 */
         .is-fs #birdEmoji {
             font-size: 12rem !important;
             margin-bottom: 1rem !important;
@@ -167,7 +170,7 @@
     <div id="contentContainer" class="w-full flex flex-col items-center">
         <!-- 標題 -->
         <header class="w-full max-w-2xl text-center mb-8 fs-hidden">
-            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.3</h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.4</h1>
             <p class="text-green-600">「不懂就問科學人」全平台精選題庫</p>
         </header>
 
@@ -196,8 +199,9 @@
                 <div id="questionText" class="text-2xl md:text-3xl font-bold text-gray-800 leading-relaxed px-2">
                     點擊按鈕開始抽選！
                 </div>
-                <!-- 全螢幕提示文字 -->
-                <div class="hidden is-fs-block text-green-400 text-sm mt-8 animate-pulse">點擊卡片任何地方抽選下一題</div>
+                
+                <!-- 提示文字 -->
+                <div id="actionHint" class="text-green-400 text-sm mt-8 animate-pulse hidden">點擊卡片任何地方抽選下一題</div>
 
                 <!-- 進度條 -->
                 <div class="absolute bottom-0 left-0 w-full h-2 bg-green-100">
@@ -207,7 +211,6 @@
 
             <!-- 動作按鈕 -->
             <div class="flex flex-col gap-4">
-                <!-- 抽選按鈕 (全螢幕隱藏，改用卡片點擊) -->
                 <button id="drawBtn" onclick="drawQuestion()" class="fs-hidden w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-2xl btn-hover flex items-center justify-center gap-2 shadow-md">
                     <span id="btnText">🎲 隨機抽取題目</span>
                 </button>
@@ -239,7 +242,6 @@
 
     <script>
         const allQuestions = [
-            // 完整題庫資料與先前一致，為節省長度此處保留邏輯架構
             { id: 1, category: "生理", text: "為什麼五色鳥似乎特別容易撞玻璃（窗殺）？機率是否與物種有關？為什麼很少聽到鸚鵡撞窗？" },
             { id: 2, category: "生理", text: "鳥類有味覺嗎？挑選食物的準則為何？寵物鳥挑食怎麼辦？" },
             { id: 3, category: "生理", text: "鳥看色彩與人類一樣嗎？眼中的世界是不是慢動作？" },
@@ -298,8 +300,10 @@
 
         let drawnIds = new Set();
         let currentCategory = 'all';
+        let isResting = false; // 是否處於休息圖卡狀態
+        let lastRestCount = 0; // 上一次休息時的抽題數量
+
         const birdEmojis = ["🕊️", "🦜", "🦆", "🦢", "🦉", "🐦", "🦅", "🐧", "🦚", "🐓", "🐥", "🐣"];
-        
         const body = document.getElementById('mainBody');
         const displayBox = document.getElementById('displayBox');
         const questionText = document.getElementById('questionText');
@@ -310,6 +314,7 @@
         const poolProgress = document.getElementById('poolProgress');
         const categoryRemaining = document.getElementById('categoryRemaining');
         const countSpan = document.getElementById('countSpan');
+        const actionHint = document.getElementById('actionHint');
 
         function getPool() {
             return currentCategory === 'all' ? allQuestions : allQuestions.filter(q => q.category === currentCategory);
@@ -330,6 +335,8 @@
             if (available.length === 0) {
                 drawBtn.disabled = true;
                 btnText.innerText = "已全部抽完";
+            } else if (isResting) {
+                btnText.innerText = "繼續抽題";
             } else {
                 drawBtn.disabled = false;
                 btnText.innerText = "🎲 隨機抽取題目";
@@ -340,34 +347,38 @@
                 const drawn = drawnIds.has(q.id);
                 return `
                     <div class="p-3 rounded-lg border-l-4 ${drawn ? 'bg-gray-100 border-gray-300 text-gray-400' : 'bg-green-50 border-green-500 text-gray-700'}">
-                        <span class="text-[10px] font-bold ${drawn ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-600'} px-1.5 py-0.5 rounded mr-2">${q.category}</span>
+                        <span class="text-[10px] font-bold ${drawn ? 'bg-gray-200 text-gray-400' : 'bg-green-100 text-green-600'} px-1.5 py-0.5 rounded mr-2 uppercase">${q.category}</span>
                         ${drawn ? '✔️ ' : ''}${q.text}
                     </div>
                 `;
             }).join('');
         }
 
-        function filterCategory(cat) {
-            currentCategory = cat;
-            document.querySelectorAll('#categoryButtons button').forEach(btn => {
-                btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-500');
-                btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
-            });
-            document.getElementById('btn-' + cat).classList.add('bg-green-100', 'text-green-700', 'border-green-500');
-            updateUI();
-            
-            const available = getAvailablePool();
-            questionText.innerHTML = available.length > 0 ? `已選擇：${getCategoryName(cat)}` : `題目已全數抽完！`;
-        }
-
-        function getCategoryName(cat) {
-            return { 'all': '全部', '生理': '生理機能', '習性': '行為習性', '生態': '生態種類', '實務': '實務日常' }[cat];
-        }
-
-        // 核心抽選邏輯
         function drawQuestion() {
+            const pool = getPool();
             const available = getAvailablePool();
-            if (available.length === 0 || drawBtn.disabled) return;
+            const currentDone = drawnIds.size;
+            const total = pool.length;
+
+            // 如果處於休息狀態，解除休息並直接開始抽題
+            if (isResting) {
+                isResting = false;
+                displayBox.classList.remove('is-resting');
+                updateUI();
+                // 繼續執行抽題邏輯
+            } else {
+                // 檢查是否達到 1/3 或 2/3 里程碑
+                const m1 = Math.floor(total / 3);
+                const m2 = Math.floor(total * 2 / 3);
+                
+                // 只有在剛抽完 1/3 或 2/3，且這次還沒顯示過休息圖卡時觸發
+                if (currentDone > 0 && (currentDone === m1 || currentDone === m2) && lastRestCount !== currentDone) {
+                    showRestCard(currentDone);
+                    return;
+                }
+            }
+
+            if (available.length === 0) return;
 
             drawBtn.disabled = true;
             displayBox.classList.add('rolling');
@@ -386,11 +397,21 @@
             }, 70);
         }
 
+        function showRestCard(count) {
+            isResting = true;
+            lastRestCount = count;
+            displayBox.classList.add('is-resting');
+            birdEmojiDisp.innerText = "🍵";
+            questionCategory.innerText = "休息時間";
+            questionText.innerText = "休息一下！喝口水再繼續";
+            updateUI();
+        }
+
         function finalizeDraw(available) {
             const selected = available[Math.floor(Math.random() * available.length)];
             drawnIds.add(selected.id);
             questionText.innerText = selected.text;
-            questionCategory.innerText = selected.category;
+            questionCategory.innerText = getCategoryFullName(selected.category);
             questionText.classList.remove('rolling-animation');
             displayBox.classList.remove('rolling');
             updateUI();
@@ -399,7 +420,6 @@
             setTimeout(() => displayBox.classList.remove('scale-105', 'border-green-400'), 300);
         }
 
-        // 點擊圖卡處理 (僅在全螢幕模式生效)
         function handleCardClick() {
             if (body.classList.contains('is-fs')) {
                 drawQuestion();
@@ -409,16 +429,42 @@
         function resetPool() {
             if (confirm("要重設抽題紀錄嗎？")) {
                 drawnIds.clear();
+                isResting = false;
+                lastRestCount = 0;
+                displayBox.classList.remove('is-resting');
                 updateUI();
                 questionText.innerText = "已重新洗牌！";
             }
         }
 
-        // 全螢幕切換處理
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('#categoryButtons button').forEach(btn => {
+                btn.classList.remove('bg-green-100', 'text-green-700', 'border-green-500');
+                btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
+            });
+            document.getElementById('btn-' + cat).classList.add('bg-green-100', 'text-green-700', 'border-green-500');
+            
+            isResting = false;
+            lastRestCount = 0;
+            displayBox.classList.remove('is-resting');
+            updateUI();
+            
+            const available = getAvailablePool();
+            questionText.innerHTML = available.length > 0 ? `已切換至「${getCategoryName(cat)}」` : `此類別已全數抽完！`;
+        }
+
+        function getCategoryName(cat) {
+            return { 'all': '全部', '生理': '生理機能', '習性': '行為習性', '生態': '生態種類', '實務': '實務日常' }[cat];
+        }
+
+        function getCategoryFullName(cat) {
+            return { "生理": "🌿 生理機能與構造", "習性": "🤔 行為與習性", "生態": "🌏 生態種類與環境", "實務": "🏠 實務與日常互動" }[cat] || "精選問題";
+        }
+
         function handleFullscreenToggle() {
             if (!document.fullscreenElement && !body.classList.contains('pseudo-fullscreen')) {
-                document.documentElement.requestFullscreen().then(() => {
-                }).catch(err => enterPseudoFullscreen());
+                document.documentElement.requestFullscreen().then(() => {}).catch(err => enterPseudoFullscreen());
             } else {
                 document.fullscreenElement ? document.exitFullscreen() : exitPseudoFullscreen();
             }
@@ -427,12 +473,14 @@
         function enterPseudoFullscreen() {
             body.classList.add('pseudo-fullscreen', 'is-fs');
             updateFSUI(true);
+            actionHint.classList.remove('hidden');
             window.addEventListener('keydown', escListener);
         }
 
         function exitPseudoFullscreen() {
             body.classList.remove('pseudo-fullscreen', 'is-fs');
             updateFSUI(false);
+            actionHint.classList.add('hidden');
             window.removeEventListener('keydown', escListener);
         }
 
@@ -444,14 +492,15 @@
             if (isFull) {
                 icon.innerText = "退出"; text.innerText = "結束全螢幕";
                 body.classList.add('is-fs');
+                actionHint.classList.remove('hidden');
             } else {
                 icon.innerText = "📺"; text.innerText = "進入全螢幕";
                 body.classList.remove('is-fs');
+                actionHint.classList.add('hidden');
             }
         }
 
         document.addEventListener('fullscreenchange', () => updateFSUI(!!document.fullscreenElement));
-
         toggleList = () => document.getElementById('listSection').classList.toggle('hidden');
         updateUI();
     </script>
