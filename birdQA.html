@@ -62,7 +62,6 @@
             display: none !important;
         }
 
-        /* 偽全螢幕容器 */
         .pseudo-fullscreen {
             position: fixed !important;
             top: 0 !important;
@@ -80,7 +79,6 @@
             overflow: hidden !important;
         }
 
-        /* 全螢幕下的排版優化 */
         .is-fs #contentContainer {
             width: 100%;
             height: 100%;
@@ -98,7 +96,6 @@
             box-shadow: none !important;
         }
 
-        /* 全螢幕下的圖卡 */
         .is-fs #displayBox {
             cursor: pointer;
             width: 100% !important;
@@ -120,14 +117,12 @@
             border-color: #10b981;
         }
 
-        /* 休息中樣式 */
         .is-resting {
             background-color: #ecfdf5 !important;
             border-color: #34d399 !important;
             border-style: solid !important;
         }
 
-        /* 全螢幕下的字體放大 */
         .is-fs #birdEmoji {
             font-size: 12rem !important;
             margin-bottom: 1rem !important;
@@ -144,7 +139,6 @@
             padding: 0 1rem !important;
         }
 
-        /* 原生全螢幕相容性 */
         :fullscreen {
             background-color: #f0f4f0;
             display: flex;
@@ -159,25 +153,20 @@
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8 transition-all" id="mainBody">
 
-    <!-- 全螢幕切換按鈕 -->
     <div class="w-full max-w-2xl flex justify-end mb-2" id="actionHeader">
         <button onclick="handleFullscreenToggle()" class="flex items-center gap-2 px-3 py-1 bg-white/70 hover:bg-white rounded-lg text-gray-600 text-sm font-medium transition-all border border-gray-200 shadow-sm">
             <span id="fullscreenIcon">📺</span> <span id="fullscreenText">進入全螢幕</span>
         </button>
     </div>
 
-    <!-- 主容器 -->
     <div id="contentContainer" class="w-full flex flex-col items-center">
-        <!-- 標題 -->
         <header class="w-full max-w-2xl text-center mb-8 fs-hidden">
-            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.4</h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-green-800 mb-2">🦜 鳥問題抽選器 v2.5</h1>
             <p class="text-green-600">「不懂就問科學人」全平台精選題庫</p>
         </header>
 
-        <!-- 抽選區域 -->
         <main class="w-full max-w-2xl bg-white rounded-3xl p-6 md:p-10 card-shadow relative overflow-hidden mb-8">
             
-            <!-- 類別篩選 (全螢幕隱藏) -->
             <div class="mb-6 fs-hidden">
                 <div class="flex justify-between items-end mb-2">
                     <label class="text-sm font-medium text-gray-500">篩選特定類別：</label>
@@ -192,7 +181,6 @@
                 </div>
             </div>
 
-            <!-- 問題顯示卡 (全螢幕時可點擊) -->
             <div onclick="handleCardClick()" class="bg-green-50 rounded-2xl p-8 min-h-[300px] flex flex-col items-center justify-center text-center border-2 border-dashed border-green-200 mb-6 transition-all relative" id="displayBox">
                 <div id="birdEmoji" class="text-6xl mb-4 bird-icon">🕊️</div>
                 <div id="questionCategory" class="text-sm font-bold tracking-widest text-green-500 uppercase mb-2">已就緒</div>
@@ -200,16 +188,13 @@
                     點擊按鈕開始抽選！
                 </div>
                 
-                <!-- 提示文字 -->
                 <div id="actionHint" class="text-green-400 text-sm mt-8 animate-pulse hidden">點擊卡片任何地方抽選下一題</div>
 
-                <!-- 進度條 -->
                 <div class="absolute bottom-0 left-0 w-full h-2 bg-green-100">
                     <div id="poolProgress" class="h-full bg-green-500 progress-bar" style="width: 100%"></div>
                 </div>
             </div>
 
-            <!-- 動作按鈕 -->
             <div class="flex flex-col gap-4">
                 <button id="drawBtn" onclick="drawQuestion()" class="fs-hidden w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-2xl btn-hover flex items-center justify-center gap-2 shadow-md">
                     <span id="btnText">🎲 隨機抽取題目</span>
@@ -225,83 +210,128 @@
                 </div>
             </div>
 
-            <!-- 題目清單 (全螢幕隱藏) -->
             <div id="listSection" class="hidden mt-8 border-t pt-6 fs-hidden">
                 <h3 class="font-bold text-gray-700 mb-4">題目清單 (灰色為已抽過)</h3>
                 <div id="fullList" class="space-y-3 max-h-80 overflow-y-auto pr-2 text-sm text-gray-600 text-left">
-                    <!-- JS 自動填充 -->
                 </div>
             </div>
         </main>
 
-        <!-- 頁尾 (全螢幕隱藏) -->
         <footer class="mt-4 text-center text-gray-400 text-xs pb-12 fs-hidden">
-            <p>資料來源：Facebook「SA Taiwan」及讀者留言整理</p>
+            <p>資料來源：Facebook「SA Taiwan」及多平台讀者留言整理</p>
         </footer>
     </div>
 
     <script>
         const allQuestions = [
-            { id: 1, category: "生理", text: "為什麼五色鳥似乎特別容易撞玻璃（窗殺）？機率是否與物種有關？為什麼很少聽到鸚鵡撞窗？" },
-            { id: 2, category: "生理", text: "鳥類有味覺嗎？挑選食物的準則為何？寵物鳥挑食怎麼辦？" },
-            { id: 3, category: "生理", text: "鳥看色彩與人類一樣嗎？眼中的世界是不是慢動作？" },
-            { id: 4, category: "生理", text: "鳥感冒會失聲嗎？台灣山林的鳥能發出幾種叫聲？" },
-            { id: 5, category: "生理", text: "為什麼鳥排泄時菊花能保持乾淨不沾毛？鸚鵡糞便乾掉後的結晶是什麼？" },
-            { id: 6, category: "生理", text: "雛鳥的糞囊生理機制是什麼？為什麼長大就消失了？" },
-            { id: 7, category: "生理", text: "為什麼鳥類可以透過很短暫的睡眠就能恢復體力？" },
-            { id: 8, category: "生理", text: "都市三寶有幾對染色體？鳥類會突變的病有哪些？" },
-            { id: 9, category: "生理", text: "換羽是全身換嗎？羽毛數量每隻都一樣嗎？顏色生成的決定因素？" },
-            { id: 10, category: "生理", text: "溫度或大氣壓力的改變，有可能會改變鳥的毛色嗎？" },
-            { id: 11, category: "生理", text: "為什麼鸚鵡能單腳拿東西？為什麼水鳥愛單腳站？" },
-            { id: 12, category: "生理", text: "為什麼有些鳥用走的，有些用跳的，有些兩者皆可？" },
-            { id: 13, category: "生理", text: "雞冠的功能是什麼？鳥類交配時是如何精準對準的？" },
-            { id: 14, category: "生理", text: "雞真的是恐龍後代嗎？恐龍是鳥，還是鳥是恐龍？" },
-            { id: 44, category: "生理", text: "鳥類的瞳孔顏色為什麼不同？不同顏色（紅色、橘色等）在構造與功能上有差異嗎？" },
-            { id: 45, category: "生理", text: "日行性鳥類都有夜盲症嗎？" },
-            { id: 46, category: "生理", text: "鳥類快速爬升高度時會不會有高山症？牠們如何調節低氣壓或氧氣變化？" },
-            { id: 55, category: "生理", text: "鳥太胖真的會飛不起來嗎？為什麼鳥會飛，人類卻不會？" },
-            { id: 56, category: "生理", text: "為什麼亞成鳥的毛色要跟成鳥不一樣？鳥類也會有頭皮屑嗎？" },
-            { id: 16, category: "習性", text: "鳥大也會十八變嗎？有沒有認識鳥寶寶的圖鑑？" },
-            { id: 17, category: "習性", text: "看到猛禽追殺弱小鳥類，介入救牠還是讓達爾文演化論做事才是正確的？" },
-            { id: 18, category: "習性", text: "鳥巢真的只為育雛嗎？平常是不是完全不回去窩著？" },
-            { id: 19, category: "習性", text: "夜鷺用吐司誘捕魚是本能，還是鳥也有這種心機思考能力？" },
-            { id: 20, category: "習性", text: "啄木鳥或擬啄木真的會故意在木頭鑿洞引誘蟲子再來吃嗎？" },
-            { id: 21, category: "習性", text: "鳥類聚在一起「開會」時到底在討論什麼？" },
-            { id: 22, category: "習性", text: "雀鳥為什麼會拔光室友的毛？鳥會認得主人嗎？" },
-            { id: 23, category: "習性", text: "鳥一生可以生幾次蛋？蛋的大小影響因素是什麼？" },
-            { id: 24, category: "習性", text: "大冠鷲吃毒蛇會中毒嗎？大卷尾真的是猛禽嗎？" },
-            { id: 47, category: "習性", text: "為什麼有些鳥會一直搖尾巴？搖尾巴的功能是什麼？" },
-            { id: 48, category: "習性", text: "為什麼有些鳥特別喜歡停在某些人造結構（如電線、招牌）上？" },
-            { id: 49, category: "習性", text: "小鳥是否有性格差異？例如有的外向大膽，有的內向害羞？" },
-            { id: 26, category: "生態", text: "隨便鳩（珠頸斑鳩）真的很隨便嗎？築巢這麼簡陋為何能生存？" },
-            { id: 27, category: "生態", text: "八哥真的會攻擊其他小型鳥嗎？有辦法限制外來種八哥嗎？" },
-            { id: 28, category: "生態", text: "飛在空中的燕子們要怎麼快速區分？" },
-            { id: 29, category: "生態", text: "如何說服政府保護台南歸仁東方草鴞的棲地？" },
-            { id: 30, category: "生態", text: "為什麼綠啄木難看到？紫嘯鶇為什麼常出現在住宅區？" },
-            { id: 31, category: "生態", text: "Merlin 軟體辨識罕見鳥種的可靠性如何？" },
-            { id: 32, category: "生態", text: "黃頭鷺吃班腿樹蛙，是否有抑制外來種族群的研究？" },
-            { id: 33, category: "生態", text: "目前公認最難拍的台灣鳥種是什麼？啄木鳥和五色鳥關係近嗎？" },
-            { id: 35, category: "生態", text: "杜鵑為何啼血？麻雀雖小是真的「雖小」嗎？" },
-            { id: 36, category: "生態", text: "鴞鸚鵡可以摸嗎？喜鵲翻白眼出現的螢光橘色是什麼？" },
-            { id: 37, category: "生態", text: "黑冠麻鷺的食繭值得收藏嗎？裡面會有驚喜嗎？" },
-            { id: 50, category: "生態", text: "五色鳥的海拔分布與樹洞對樹木健康影響？" },
-            { id: 54, category: "生態", text: "為什麼大笨鳥叫大笨鳥？為什麼校園裡常看到牠們？" },
-            { id: 57, category: "生態", text: "鴿子花紋的多樣性：斑點、全白或全黑的原因？" },
-            { id: 39, category: "實務", text: "路上看到小鳥（或幼鳥）該怎麼辦？外來種如何處理？" },
-            { id: 40, category: "實務", text: "如何檢舉才能有效杜絕私養野鳥的問題？" },
-            { id: 41, category: "實務", text: "最推薦給入門者的望遠鏡是什麼？" },
-            { id: 43, category: "實務", text: "林大利老師個人最喜歡哪種鳥？哪種習性最有趣？" },
-            { id: 51, category: "實務", text: "可以在頂樓放鳥飼料讓小鳥自行取食嗎？" },
-            { id: 52, category: "實務", text: "如何友善驅離家門口的鳥類排泄問題？" },
-            { id: 53, category: "實務", text: "地瓜為什麼走路這麼慢？（迷因題）" },
-            { id: 58, category: "實務", text: "八哥腳爪角質增生處理？鴿子糞便是否有毒？" },
-            { id: 59, category: "實務", text: "貓爬到樹上會變成貓頭鷹嗎？被鳥屎砸到會中樂透嗎？" }
+            // 生理機能
+            { id: 1, category: "生理", text: "為什麼五色鳥似乎特別容易撞玻璃（窗殺）？" },
+            { id: 2, category: "生理", text: "窗殺機率是否與物種有關？" },
+            { id: 3, category: "生理", text: "為什麼很少聽到鸚鵡撞窗？" },
+            { id: 4, category: "生理", text: "鳥類有味覺嗎？" },
+            { id: 5, category: "生理", text: "鳥類挑選食物的準則為何？" },
+            { id: 6, category: "生理", text: "寵物鳥挑食怎麼辦？" },
+            { id: 7, category: "生理", text: "鳥看色彩與人類一樣嗎？" },
+            { id: 8, category: "生理", text: "鳥眼中的世界是不是慢動作？" },
+            { id: 9, category: "生理", text: "鳥感冒會失聲嗎？" },
+            { id: 10, category: "生理", text: "台灣山林的鳥能發出幾種叫聲？" },
+            { id: 11, category: "生理", text: "為什麼鳥排泄時菊花能保持乾淨不沾毛？" },
+            { id: 12, category: "生理", text: "鸚鵡糞便乾掉後的結晶是什麼？" },
+            { id: 13, category: "生理", text: "雛鳥的糞囊生理機制是什麼？" },
+            { id: 14, category: "生理", text: "為什麼雛鳥長大後糞囊就消失了？" },
+            { id: 15, category: "生理", text: "為什麼鳥類可以透過很短暫的睡眠就能恢復體力？" },
+            { id: 16, category: "生理", text: "都市三寶（麻雀、白頭翁、綠繡眼）有幾對染色體？" },
+            { id: 17, category: "生理", text: "鳥類常見會突變的病有哪些？" },
+            { id: 18, category: "生理", text: "鳥類換羽是全身換嗎？" },
+            { id: 19, category: "生理", text: "同一種鳥，每隻的羽毛數量都一樣嗎？" },
+            { id: 20, category: "生理", text: "決定鳥類羽毛顏色的因素是什麼？" },
+            { id: 21, category: "生理", text: "環境溫度或大氣壓力的改變，有可能會改變鳥的毛色嗎？" },
+            { id: 22, category: "生理", text: "為什麼有些鸚鵡能單腳拿東西？" },
+            { id: 23, category: "生理", text: "為什麼水鳥愛單腳站？" },
+            { id: 24, category: "生理", text: "為什麼有些鳥用走的，有些用跳的？" },
+            { id: 25, category: "生理", text: "鳥類的雞冠有什麼功能？" },
+            { id: 26, category: "生理", text: "鳥類交配時是如何精準對準的？" },
+            { id: 27, category: "生理", text: "雞真的是恐龍的後代嗎？" },
+            { id: 28, category: "生理", text: "恐龍是鳥，還是鳥是恐龍？" },
+            { id: 29, category: "生理", text: "鳥類的瞳孔顏色為什麼會不同？" },
+            { id: 30, category: "生理", text: "紅色或橘色等不同顏色的瞳孔，在構造與功能上有差異嗎？" },
+            { id: 31, category: "生理", text: "日行性鳥類都有夜盲症嗎？" },
+            { id: 32, category: "生理", text: "鳥類快速爬升高度時會不會有高山症？" },
+            { id: 33, category: "生理", text: "鳥類如何調節低氣壓或氧氣變化？" },
+            { id: 34, category: "生理", text: "鳥太胖真的會飛不起來嗎？" },
+            { id: 35, category: "生理", text: "為什麼鳥會飛，人類卻不會？" },
+            { id: 36, category: "生理", text: "為什麼亞成鳥的毛色要跟成鳥不一樣？" },
+            { id: 37, category: "生理", text: "鳥類也會有頭皮屑嗎？" },
+
+            // 行為習性
+            { id: 38, category: "習性", text: "鳥大也會十八變嗎？" },
+            { id: 39, category: "習性", text: "有沒有認識鳥寶寶的專門圖鑑？" },
+            { id: 40, category: "習性", text: "看到猛禽追殺弱小鳥類，該介入救牠還是讓自然演化做事？" },
+            { id: 41, category: "習性", text: "鳥巢真的只為育雛嗎？" },
+            { id: 42, category: "習性", text: "鳥平常是不是完全不回去窩著睡覺？" },
+            { id: 43, category: "習性", text: "夜鷺用吐司誘捕魚是本能，還是有思考能力？" },
+            { id: 44, category: "習性", text: "啄木鳥會故意在木頭鑿洞引誘蟲子進來吃嗎？" },
+            { id: 45, category: "習性", text: "鳥類在樹上「開會」時到底在討論什麼？" },
+            { id: 46, category: "習性", text: "雀鳥為什麼會拔光室友的毛？" },
+            { id: 47, category: "習性", text: "鳥會認得主人嗎？" },
+            { id: 48, category: "習性", text: "鳥一生可以生幾次蛋？" },
+            { id: 49, category: "習性", text: "鳥蛋的大小決定的因素是什麼？" },
+            { id: 50, category: "習性", text: "大冠鷲吃毒蛇會中毒嗎？" },
+            { id: 51, category: "習性", text: "大卷尾真的是猛禽嗎？" },
+            { id: 52, category: "習性", text: "為什麼有些鳥（如鶺鴒、磯鷸）會一直搖尾巴？" },
+            { id: 53, category: "習性", text: "鳥類搖尾巴（或屁股）的功能是什麼？" },
+            { id: 54, category: "習性", text: "為什麼鳥類特別喜歡停在電線或招牌等結構上？" },
+            { id: 55, category: "習性", text: "小鳥是否有性格差異（例如內向或外向）？" },
+
+            // 生態種類
+            { id: 56, category: "生態", text: "隨便鳩（珠頸斑鳩）真的很隨便嗎？" },
+            { id: 57, category: "生態", text: "珠頸斑鳩築巢這麼簡陋，為何能長久生存？" },
+            { id: 58, category: "生態", text: "為什麼隨便鳩的插畫要畫成一隻鴿子？" },
+            { id: 59, category: "生態", text: "外來種八哥真的會攻擊其他小型鳥嗎？" },
+            { id: 60, category: "生態", text: "有辦法限制或管控外來種八哥嗎？" },
+            { id: 61, category: "生態", text: "如何區分飛行中的小雨燕、家燕、洋燕與金腰燕？" },
+            { id: 62, category: "生態", text: "如何說服政府保護台南歸仁的東方草鴞棲地？" },
+            { id: 63, category: "生態", text: "為什麼台灣山區的綠啄木這麼難看到？" },
+            { id: 64, category: "生態", text: "紫嘯鶇為什麼近年越來越常出現在住宅區？" },
+            { id: 65, category: "生態", text: "Merlin Bird APP 辨識罕見鳥種的可靠性如何？" },
+            { id: 66, category: "生態", text: "黃頭鷺吃班腿樹蛙，有抑制外來種族群的研究嗎？" },
+            { id: 67, category: "生態", text: "目前公認最難拍的台灣鳥種是什麼？" },
+            { id: 68, category: "生態", text: "啄木鳥和擬啄木（五色鳥）的關係近嗎？" },
+            { id: 69, category: "生態", text: "肌肉量最低的鳥類是哪種？" },
+            { id: 70, category: "生態", text: "杜鵑為何啼血？" },
+            { id: 71, category: "生態", text: "「麻雀雖小」是真的「雖小（倒霉）」嗎？" },
+            { id: 72, category: "生態", text: "世界上最肥的鸚鵡「鴞鸚鵡」可以摸嗎？" },
+            { id: 73, category: "生態", text: "喜鵲翻白眼出現的螢光橘色東西是什麼？" },
+            { id: 74, category: "生態", text: "黑冠麻鷺的食繭值得收藏嗎？" },
+            { id: 75, category: "生態", text: "五色鳥通常分布在什麼海拔？" },
+            { id: 76, category: "生態", text: "五色鳥啄樹洞會對樹木健康造成影響嗎？" },
+            { id: 77, category: "生態", text: "為什麼大笨鳥（黑冠麻鷺）叫大笨鳥？" },
+            { id: 78, category: "生態", text: "為什麼校園裡特別常看到大笨鳥？" },
+            { id: 79, category: "生態", text: "為什麼有些鴿子的頭上或身體會有不同顏色斑點？" },
+
+            // 實務日常
+            { id: 80, category: "實務", text: "路上看到小鳥（或幼鳥）應該怎麼辦？" },
+            { id: 81, category: "實務", text: "如果遇到的是外來種小鳥，應該怎麼處理？" },
+            { id: 82, category: "實務", text: "如何有效杜絕民眾私養野鳥的問題？" },
+            { id: 83, category: "實務", text: "最推薦給入門觀鳥者的望遠鏡？" },
+            { id: 84, category: "實務", text: "去日本「鳩吹山」旅遊可以觀察到什麼？" },
+            { id: 85, category: "實務", text: "林大利老師個人覺得哪種鳥最漂亮？" },
+            { id: 86, category: "實務", text: "林大利老師覺得哪種鳥的行為最有趣？" },
+            { id: 87, category: "實務", text: "可以在家裡頂樓放鳥飼料讓小鳥自行取食嗎？" },
+            { id: 88, category: "實務", text: "長期餵食野生鳥類對環境有什麼影響？" },
+            { id: 89, category: "實務", text: "如何有效避免鳥在家門口或特定位置排泄？" },
+            { id: 90, category: "實務", text: "有哪些友善的鳥類驅離法？" },
+            { id: 91, category: "實務", text: "地瓜（毛小孩名？）為什麼走路這麼慢？" },
+            { id: 92, category: "實務", text: "八哥腳爪有角鱗過度增生的病該如何去除？" },
+            { id: 93, category: "實務", text: "鴿子糞便是否有毒？" },
+            { id: 94, category: "實務", text: "貓爬到樹上會變成貓頭鷹嗎？" },
+            { id: 95, category: "實務", text: "被鳥屎砸到頭真的會中樂透嗎？" }
         ];
 
         let drawnIds = new Set();
         let currentCategory = 'all';
-        let isResting = false; // 是否處於休息圖卡狀態
-        let lastRestCount = 0; // 上一次休息時的抽題數量
+        let isResting = false; 
+        let lastRestCount = 0; 
 
         const birdEmojis = ["🕊️", "🦜", "🦆", "🦢", "🦉", "🐦", "🦅", "🐧", "🦚", "🐓", "🐥", "🐣"];
         const body = document.getElementById('mainBody');
@@ -360,18 +390,13 @@
             const currentDone = drawnIds.size;
             const total = pool.length;
 
-            // 如果處於休息狀態，解除休息並直接開始抽題
             if (isResting) {
                 isResting = false;
                 displayBox.classList.remove('is-resting');
                 updateUI();
-                // 繼續執行抽題邏輯
             } else {
-                // 檢查是否達到 1/3 或 2/3 里程碑
                 const m1 = Math.floor(total / 3);
                 const m2 = Math.floor(total * 2 / 3);
-                
-                // 只有在剛抽完 1/3 或 2/3，且這次還沒顯示過休息圖卡時觸發
                 if (currentDone > 0 && (currentDone === m1 || currentDone === m2) && lastRestCount !== currentDone) {
                     showRestCard(currentDone);
                     return;
@@ -444,12 +469,10 @@
                 btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
             });
             document.getElementById('btn-' + cat).classList.add('bg-green-100', 'text-green-700', 'border-green-500');
-            
             isResting = false;
             lastRestCount = 0;
             displayBox.classList.remove('is-resting');
             updateUI();
-            
             const available = getAvailablePool();
             questionText.innerHTML = available.length > 0 ? `已切換至「${getCategoryName(cat)}」` : `此類別已全數抽完！`;
         }
