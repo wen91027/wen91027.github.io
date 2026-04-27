@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【鯨聲尖叫】問題抽選器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #e0f2fe;
+            background-image: radial-gradient(#bae6fd 1px, transparent 1px);
+            background-size: 30px 30px;
+            transition: background-color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .rolling-animation {
+            animation: roll 0.1s infinite linear;
+        }
+
+        @keyframes roll {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-10px); opacity: 0.5; }
+        }
+
+        .btn-hover {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-hover:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .ocean-icon {
+            display: inline-block;
+            transition: transform 0.5s ease;
+        }
+
+        .rolling .ocean-icon {
+            animation: bounce 0.5s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* --- 全螢幕與偽全螢幕邏輯 --- */
+        .is-fs .fs-hidden {
+            display: none !important;
+        }
+
+        .pseudo-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            background-color: #e0f2fe !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+        }
+
+        .is-fs #contentContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .is-fs main {
+            max-width: 90vw !important;
+            max-height: 90vh !important;
+            width: 1100px !important;
+            padding: 2rem !important;
+            background: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 全螢幕下的圖卡：固定大小與超大字體 */
+        .is-fs #displayBox {
+            cursor: pointer;
+            width: 100% !important;
+            height: 80vh !important;
+            max-height: 750px !important;
+            min-height: 450px !important;
+            padding: 3rem !important;
+            background-color: white !important;
+            border-radius: 4rem !important;
+            border-width: 6px !important;
+            border-color: #0ea5e9;
+            box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.3) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .is-fs #displayBox:hover {
+            transform: scale(1.01);
+            border-color: #0284c7;
+        }
+
+        .is-fs #oceanEmoji {
+            font-size: 14rem !important;
+            margin-bottom: 1.5rem !important;
+        }
+
+        .is-fs #questionCategory {
+            font-size: 1.8rem !important;
+            color: #0ea5e9 !important;
+            letter-spacing: 0.5rem;
+        }
+
+        .is-fs #questionText {
+            font-size: 4rem !important;
+            line-height: 1.25 !important;
+            font-weight: 800;
+        }
+
+        .is-resting {
+            background-color: #f0f9ff !important;
+            border-color: #7dd3fc !important;
+            border-style: solid !important;
+        }
+
+        :fullscreen {
+            background-color: #e0f2fe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #actionHeader {
+            z-index: 10001;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8 transition-all" id="mainBody">
+
+    <!-- 操作列 -->
+    <div class="w-full max-w-2xl flex justify-end mb-2" id="actionHeader">
+        <button onclick="handleFullscreenToggle()" class="flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-xl text-sky-700 text-sm font-bold transition-all border border-sky-200 shadow-sm">
+            <span id="fullscreenIcon">📺</span> <span id="fullscreenText">全螢幕模式</span>
+        </button>
+    </div>
+
+    <div id="contentContainer" class="w-full flex flex-col items-center">
+        <!-- 標題區域 -->
+        <header class="w-full max-w-2xl text-center mb-8 fs-hidden">
+            <h1 class="text-3xl md:text-5xl font-black text-sky-900 mb-2 tracking-tighter">🐋 鯨聲尖叫問題抽選器</h1>
+            <p class="text-sky-600 font-medium italic">聽見海洋深處的秘密與科學</p>
+        </header>
+
+        <!-- 抽選區域 -->
+        <main class="w-full max-w-2xl bg-white rounded-[2.5rem] p-6 md:p-10 card-shadow relative overflow-hidden mb-8">
+            
+            <!-- 分類篩選 (全螢幕隱藏) -->
+            <div class="mb-6 fs-hidden">
+                <div class="flex justify-between items-end mb-3">
+                    <label class="text-sm font-bold text-sky-800/60">探索領域：</label>
+                    <span class="text-xs text-sky-400">目前類別剩餘：<span id="categoryRemaining" class="font-bold text-sky-600">0</span> 題</span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2" id="categoryButtons">
+                    <button onclick="filterCategory('all')" id="btn-all" class="px-4 py-2 rounded-full bg-sky-100 text-sky-700 text-sm font-bold border-2 border-sky-500">全部聲音</button>
+                    <button onclick="filterCategory('聽覺')" id="btn-聽覺" class="px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">生理聽覺</button>
+                    <button onclick="filterCategory('行為')" id="btn-行為" class="px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">聲音行為</button>
+                    <button onclick="filterCategory('生態')" id="btn-生態" class="px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">海洋生態</button>
+                    <button onclick="filterCategory('物理')" id="btn-物理" class="px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">物理聲學</button>
+                    <button onclick="filterCategory('趣味')" id="btn-趣味" class="px-4 py-2 rounded-full bg-gray-100 text-gray-600 text-sm font-bold border-2 border-transparent">趣味探索</button>
+                </div>
+            </div>
+
+            <!-- 問題顯示卡 (全螢幕時可點擊) -->
+            <div onclick="handleCardClick()" class="bg-sky-50 rounded-[2rem] p-8 min-h-[320px] flex flex-col items-center justify-center text-center border-2 border-dashed border-sky-200 mb-6 transition-all relative group" id="displayBox">
+                <div id="oceanEmoji" class="text-7xl mb-4 ocean-icon">🐋</div>
+                <div id="questionCategory" class="text-sm font-black tracking-[0.3em] text-sky-500 uppercase mb-3">準備潛水</div>
+                <div id="questionText" class="text-2xl md:text-3xl font-bold text-sky-900 leading-relaxed px-4">
+                    點擊按鈕探索深海問題！
+                </div>
+                
+                <div id="actionHint" class="text-sky-400 text-sm mt-8 animate-pulse hidden">點擊卡片任何地方抽選下一題</div>
+
+                <div class="absolute bottom-0 left-0 w-full h-2.5 bg-sky-100">
+                    <div id="poolProgress" class="h-full bg-sky-500 progress-bar" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <button id="drawBtn" onclick="drawQuestion()" class="fs-hidden w-full bg-sky-600 hover:bg-sky-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-black py-5 rounded-[1.5rem] text-2xl btn-hover flex items-center justify-center gap-3 shadow-lg shadow-sky-200">
+                    <span id="btnText">🎲 隨機抽取鯨聲問題</span>
+                </button>
+                
+                <div class="flex justify-between items-center px-4 fs-hidden">
+                    <button onclick="toggleList()" class="text-sky-600 font-bold hover:underline text-sm py-2">
+                        瀏覽完整題庫 (<span id="countSpan">0</span>)
+                    </button>
+                    <button id="resetBtn" onclick="resetPool()" class="text-gray-400 hover:text-red-500 font-medium text-sm py-2 transition-colors">
+                        🔄 重新開始探索
+                    </button>
+                </div>
+            </div>
+
+            <div id="listSection" class="hidden mt-8 border-t border-sky-100 pt-6 fs-hidden">
+                <h3 class="font-bold text-sky-900 mb-4">目前的聲音碎片：</h3>
+                <div id="fullList" class="space-y-3 max-h-80 overflow-y-auto pr-2 text-sm text-sky-700 text-left">
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-4 text-center text-sky-400 text-xs pb-12 fs-hidden">
+            <p>主題：海洋聲學與鯨豚保育｜製作：鯨聲尖叫團隊</p>
+        </footer>
+    </div>
+
+    <script>
+        const allQuestions = [
+            // 生理聽覺
+            { id: 1, category: "聽覺", text: "鯨豚有耳膜嗎？" },
+            { id: 2, category: "聽覺", text: "鯨豚聽到的聲音跟人類聽到的聲音一樣嗎？" },
+            
+            // 聲音行為
+            { id: 3, category: "行為", text: "目前的科學研究有找到鯨魚發出聲音代表的「單字」嗎？" },
+            { id: 4, category: "行為", text: "如何辨別同一群但不同隻鯨豚的聲音？" },
+            { id: 5, category: "行為", text: "著名的「52赫茲鯨魚」後來有找到同伴嗎？" },
+            { id: 6, category: "行為", text: "在海中，是否有生物會透過聲音威嚇對方（類似陸地上的吼叫）？" },
+            { id: 7, category: "行為", text: "魚吐泡泡是在說話嗎？" },
+            
+            // 海洋生態
+            { id: 8, category: "生態", text: "離岸風機施工時採取的減噪措施，真的能讓週圍鯨豚感到安定嗎？" },
+            { id: 9, category: "生態", text: "健康的海（或河），背景聲音聽起來跟不健康時有什麼差別？" },
+            { id: 10, category: "生態", text: "請問海、河、湖的背景聲音大約是多少分貝？" },
+            { id: 11, category: "生態", text: "水生生物適合生活的音量建議是在多少分貝以下？" },
+            { id: 12, category: "生態", text: "離岸風電、船隻等人類活動造成的「噪音污染」大約是多少分貝？" },
+
+            // 物理聲學
+            { id: 13, category: "物理", text: "鯨魚的叫聲可以帶動水的波動到什麼樣的程度？" },
+            { id: 14, category: "物理", text: "海底地震或板塊移動時，可以量測得到聲音嗎？" },
+            { id: 15, category: "物理", text: "裝水的杯子用敲的和用摩擦邊緣發聲，到底是看空氣柱還是水柱？" },
+            { id: 16, category: "物理", text: "不同的液體播放同樣的聲音，傳出來的聲音會不同嗎？是如何改變的？" },
+
+            // 趣味探索
+            { id: 17, category: "趣味", text: "如果這輩子只能選一片海錄下最後一段聲音，你會選台灣海域還是北冰洋？" },
+            { id: 18, category: "趣味", text: "在深海裡有沒有可能錄到外星人的聲音？" },
+            { id: 19, category: "趣味", text: "海底的沈船有沒有可能發出奇怪的聲音？" },
+            { id: 20, category: "趣味", text: "在你的觀測經驗中，曾聽過什麼最奇怪的海洋聲音嗎？" }
+        ];
+
+        let drawnIds = new Set();
+        let currentCategory = 'all';
+        let isResting = false;
+        let lastRestCount = 0;
+
+        const oceanEmojis = ["🐋", "🐬", "🐙", "🌊", "🐚", "🐠", "🐡", "🦈", "🚢", "🔈", "🏝️", "⛵"];
+        const body = document.getElementById('mainBody');
+        const displayBox = document.getElementById('displayBox');
+        const questionText = document.getElementById('questionText');
+        const questionCategory = document.getElementById('questionCategory');
+        const birdEmojiDisp = document.getElementById('oceanEmoji');
+        const drawBtn = document.getElementById('drawBtn');
+        const btnText = document.getElementById('btnText');
+        const poolProgress = document.getElementById('poolProgress');
+        const categoryRemaining = document.getElementById('categoryRemaining');
+        const countSpan = document.getElementById('countSpan');
+        const actionHint = document.getElementById('actionHint');
+
+        function getPool() {
+            return currentCategory === 'all' ? allQuestions : allQuestions.filter(q => q.category === currentCategory);
+        }
+
+        function getAvailablePool() {
+            return getPool().filter(q => !drawnIds.has(q.id));
+        }
+
+        function updateUI() {
+            const pool = getPool();
+            const available = getAvailablePool();
+            categoryRemaining.innerText = available.length;
+            countSpan.innerText = pool.length;
+            const percent = pool.length === 0 ? 0 : (available.length / pool.length) * 100;
+            poolProgress.style.width = percent + "%";
+            
+            if (available.length === 0) {
+                drawBtn.disabled = true;
+                btnText.innerText = "本類別碎片已集齊";
+            } else if (isResting) {
+                btnText.innerText = "繼續航行";
+            } else {
+                drawBtn.disabled = false;
+                btnText.innerText = "🎲 隨機抽取鯨聲問題";
+            }
+
+            const listEl = document.getElementById('fullList');
+            listEl.innerHTML = pool.map(q => {
+                const drawn = drawnIds.has(q.id);
+                return `
+                    <div class="p-3 rounded-xl border-l-4 ${drawn ? 'bg-gray-100 border-gray-300 text-gray-400' : 'bg-sky-50 border-sky-400 text-sky-800'} transition-all">
+                        <span class="text-[10px] font-bold ${drawn ? 'bg-gray-200 text-gray-400' : 'bg-sky-100 text-sky-600'} px-1.5 py-0.5 rounded mr-2 uppercase">${q.category}</span>
+                        ${drawn ? '✔️ ' : ''}${q.text}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function drawQuestion() {
+            const pool = getPool();
+            const available = getAvailablePool();
+            const currentDone = drawnIds.size;
+            const total = pool.length;
+
+            if (isResting) {
+                isResting = false;
+                displayBox.classList.remove('is-resting');
+                updateUI();
+            } else {
+                // 每過 1/5 觸發一次休息
+                const milestones = [0.2, 0.4, 0.6, 0.8].map(ratio => Math.floor(total * ratio));
+                if (currentDone > 0 && milestones.includes(currentDone) && lastRestCount !== currentDone) {
+                    showRestCard(currentDone);
+                    return;
+                }
+            }
+
+            if (available.length === 0) return;
+
+            drawBtn.disabled = true;
+            displayBox.classList.add('rolling');
+            questionText.classList.add('rolling-animation');
+            
+            let counter = 0;
+            const interval = setInterval(() => {
+                const temp = available[Math.floor(Math.random() * available.length)];
+                questionText.innerText = temp.text;
+                birdEmojiDisp.innerText = oceanEmojis[Math.floor(Math.random() * oceanEmojis.length)];
+                counter++;
+                if (counter >= 15) {
+                    clearInterval(interval);
+                    finalizeDraw(available);
+                }
+            }, 70);
+        }
+
+        function showRestCard(count) {
+            isResting = true;
+            lastRestCount = count;
+            displayBox.classList.add('is-resting');
+            birdEmojiDisp.innerText = "🍵";
+            questionCategory.innerText = "休息時間";
+            questionText.innerText = "暫時浮出水面換口氣吧！喝水休息一下。";
+            updateUI();
+        }
+
+        function finalizeDraw(available) {
+            const selected = available[Math.floor(Math.random() * available.length)];
+            drawnIds.add(selected.id);
+            questionText.innerText = selected.text;
+            questionCategory.innerText = getCategoryFullName(selected.category);
+            questionText.classList.remove('rolling-animation');
+            displayBox.classList.remove('rolling');
+            updateUI();
+            
+            displayBox.classList.add('scale-105', 'border-sky-400', 'ring-8', 'ring-sky-100');
+            setTimeout(() => displayBox.classList.remove('scale-105', 'border-sky-400', 'ring-8', 'ring-sky-100'), 400);
+        }
+
+        function handleCardClick() {
+            if (body.classList.contains('is-fs')) {
+                drawQuestion();
+            }
+        }
+
+        function resetPool() {
+            if (confirm("要清除目前的航行紀錄，重新開始探索嗎？")) {
+                drawnIds.clear();
+                isResting = false;
+                lastRestCount = 0;
+                displayBox.classList.remove('is-resting');
+                updateUI();
+                questionText.innerText = "海圖已重置，準備重新出發！";
+                questionCategory.innerText = "航線重啟";
+            }
+        }
+
+        function filterCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('#categoryButtons button').forEach(btn => {
+                btn.classList.remove('bg-sky-100', 'text-sky-700', 'border-sky-500');
+                btn.classList.add('bg-gray-100', 'text-gray-600', 'border-transparent');
+            });
+            const targetBtn = document.getElementById('btn-' + cat);
+            if (targetBtn) targetBtn.classList.add('bg-sky-100', 'text-sky-700', 'border-sky-500');
+            
+            isResting = false;
+            lastRestCount = 0;
+            displayBox.classList.remove('is-resting');
+            updateUI();
+            const available = getAvailablePool();
+            questionText.innerHTML = available.length > 0 ? `已鎖定區域：${getCategoryName(cat)}` : `此海域碎片已全數蒐集！`;
+        }
+
+        function getCategoryName(cat) {
+            return { 'all': '全部', '聽覺': '生理聽覺', '行為': '聲音行為', '生態': '海洋生態', '物理': '物理聲學', '趣味': '趣味探索' }[cat];
+        }
+
+        function getCategoryFullName(cat) {
+            return { "聽覺": "👂 生理聽覺構造", "行為": "🐋 聲音行為分析", "生態": "🌊 海洋生態保育", "物理": "📐 物理聲學科學", "趣味": "✨ 趣味探索與經驗" }[cat] || "精選問題";
+        }
+
+        function handleFullscreenToggle() {
+            if (!document.fullscreenElement && !body.classList.contains('pseudo-fullscreen')) {
+                document.documentElement.requestFullscreen().then(() => {}).catch(err => enterPseudoFullscreen());
+            } else {
+                document.fullscreenElement ? document.exitFullscreen() : exitPseudoFullscreen();
+            }
+        }
+
+        function enterPseudoFullscreen() {
+            body.classList.add('pseudo-fullscreen', 'is-fs');
+            updateFSUI(true);
+            actionHint.classList.remove('hidden');
+            window.addEventListener('keydown', escListener);
+        }
+
+        function exitPseudoFullscreen() {
+            body.classList.remove('pseudo-fullscreen', 'is-fs');
+            updateFSUI(false);
+            actionHint.classList.add('hidden');
+            window.removeEventListener('keydown', escListener);
+        }
+
+        function escListener(e) { if (e.key === 'Escape') exitPseudoFullscreen(); }
+
+        function updateFSUI(isFull) {
+            const icon = document.getElementById('fullscreenIcon');
+            const text = document.getElementById('fullscreenText');
+            if (isFull) {
+                icon.innerText = "退出"; text.innerText = "結束全螢幕";
+                body.classList.add('is-fs');
+                actionHint.classList.remove('hidden');
+            } else {
+                icon.innerText = "📺"; text.innerText = "全螢幕模式";
+                body.classList.remove('is-fs');
+                actionHint.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => updateFSUI(!!document.fullscreenElement));
+        toggleList = () => document.getElementById('listSection').classList.toggle('hidden');
+        updateUI();
+    </script>
+</body>
+</html>
