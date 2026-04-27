@@ -136,12 +136,6 @@
             font-weight: 800;
         }
 
-        .is-resting {
-            background-color: #f0f9ff !important;
-            border-color: #7dd3fc !important;
-            border-style: solid !important;
-        }
-
         :fullscreen {
             background-color: #e0f2fe;
             display: flex;
@@ -266,8 +260,6 @@
 
         let drawnIds = new Set();
         let currentCategory = 'all';
-        let isResting = false;
-        let lastRestCount = 0;
 
         const oceanEmojis = ["🐋", "🐬", "🐙", "🌊", "🐚", "🐠", "🐡", "🦈", "🚢", "🔈", "🏝️", "⛵"];
         const body = document.getElementById('mainBody');
@@ -301,8 +293,6 @@
             if (available.length === 0) {
                 drawBtn.disabled = true;
                 btnText.innerText = "本類別碎片已集齊";
-            } else if (isResting) {
-                btnText.innerText = "繼續航行";
             } else {
                 drawBtn.disabled = false;
                 btnText.innerText = "🎲 隨機抽取鯨聲問題";
@@ -321,24 +311,7 @@
         }
 
         function drawQuestion() {
-            const pool = getPool();
             const available = getAvailablePool();
-            const currentDone = drawnIds.size;
-            const total = pool.length;
-
-            if (isResting) {
-                isResting = false;
-                displayBox.classList.remove('is-resting');
-                updateUI();
-            } else {
-                // 每過 1/5 觸發一次休息
-                const milestones = [0.2, 0.4, 0.6, 0.8].map(ratio => Math.floor(total * ratio));
-                if (currentDone > 0 && milestones.includes(currentDone) && lastRestCount !== currentDone) {
-                    showRestCard(currentDone);
-                    return;
-                }
-            }
-
             if (available.length === 0) return;
 
             drawBtn.disabled = true;
@@ -356,16 +329,6 @@
                     finalizeDraw(available);
                 }
             }, 70);
-        }
-
-        function showRestCard(count) {
-            isResting = true;
-            lastRestCount = count;
-            displayBox.classList.add('is-resting');
-            birdEmojiDisp.innerText = "🍵";
-            questionCategory.innerText = "休息時間";
-            questionText.innerText = "暫時浮出水面換口氣吧！喝水休息一下。";
-            updateUI();
         }
 
         function finalizeDraw(available) {
@@ -390,9 +353,6 @@
         function resetPool() {
             if (confirm("要清除目前的航行紀錄，重新開始探索嗎？")) {
                 drawnIds.clear();
-                isResting = false;
-                lastRestCount = 0;
-                displayBox.classList.remove('is-resting');
                 updateUI();
                 questionText.innerText = "海圖已重置，準備重新出發！";
                 questionCategory.innerText = "航線重啟";
@@ -408,9 +368,6 @@
             const targetBtn = document.getElementById('btn-' + cat);
             if (targetBtn) targetBtn.classList.add('bg-sky-100', 'text-sky-700', 'border-sky-500');
             
-            isResting = false;
-            lastRestCount = 0;
-            displayBox.classList.remove('is-resting');
             updateUI();
             const available = getAvailablePool();
             questionText.innerHTML = available.length > 0 ? `已鎖定區域：${getCategoryName(cat)}` : `此海域碎片已全數蒐集！`;
