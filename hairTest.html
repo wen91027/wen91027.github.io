@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>頭皮屬性快篩檢測</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0f7f4;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+        .progress-bar {
+            transition: width 0.4s ease;
+        }
+        .btn-active:active {
+            transform: scale(0.98);
+        }
+        .share-banner {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-md glass-card p-8 text-center">
+        <!-- 初始畫面 -->
+        <div id="start-screen">
+            <div class="mb-6">
+                <div class="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">頭皮屬性快篩</h1>
+                <p class="text-gray-500 mt-2">擺脫「油、癢、乾」，找出你的命定洗護</p>
+            </div>
+            <button onclick="startQuiz()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl transition duration-300 shadow-lg btn-active">
+                開始 30 秒檢測
+            </button>
+        </div>
+
+        <!-- 測驗中 -->
+        <div id="quiz-screen" class="hidden">
+            <div class="flex justify-between items-center mb-2">
+                <span id="step-count" class="text-xs font-bold text-teal-600 uppercase tracking-wider"></span>
+                <span id="step-percent" class="text-xs text-gray-400"></span>
+            </div>
+            <div class="w-full bg-gray-100 h-2 rounded-full mb-8">
+                <div id="progress" class="progress-bar bg-teal-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <div class="min-h-[120px] flex items-center justify-center">
+                <p id="question-text" class="text-xl font-bold text-gray-700 leading-snug"></p>
+            </div>
+            <div class="grid grid-cols-1 gap-4 mt-8">
+                <button onclick="handleAnswer(true)" class="w-full py-4 border-2 border-teal-500 text-teal-600 hover:bg-teal-50 font-bold rounded-xl transition btn-active">
+                    是的，符合
+                </button>
+                <button onclick="handleAnswer(false)" class="w-full py-4 border-2 border-gray-200 text-gray-400 hover:bg-gray-50 font-bold rounded-xl transition btn-active">
+                    不符合
+                </button>
+            </div>
+        </div>
+
+        <!-- 結果畫面 -->
+        <div id="result-screen" class="hidden text-center">
+            <div id="result-capture-area">
+                <div id="result-icon" class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"></div>
+                <h2 class="text-gray-400 font-bold text-sm tracking-widest uppercase mb-1">您的頭皮屬於</h2>
+                <h1 id="result-title" class="text-4xl font-black mb-6"></h1>
+                
+                <div class="text-left space-y-4 mb-6">
+                    <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm">
+                        <h3 class="font-bold text-gray-800 mb-2 flex items-center">
+                            <span class="w-1.5 h-4 bg-teal-500 rounded-full mr-2"></span>屬性特徵
+                        </h3>
+                        <p id="result-desc" class="text-gray-600 text-sm leading-relaxed"></p>
+                    </div>
+                    <div class="bg-teal-50 p-5 rounded-2xl border border-teal-100">
+                        <h3 class="font-bold text-teal-800 mb-2 flex items-center">
+                            <span class="w-1.5 h-4 bg-teal-400 rounded-full mr-2"></span>保養建議
+                        </h3>
+                        <ul id="result-tips" class="text-teal-900 text-sm space-y-1 list-disc list-inside"></ul>
+                    </div>
+                </div>
+                
+                <div class="text-xs text-gray-400 mb-4 italic">
+                    檢測時間：<span id="result-date"></span> | ID: #<span id="result-id"></span>
+                </div>
+            </div>
+
+            <!-- 分享鼓勵區 -->
+            <div class="share-banner p-4 rounded-2xl text-white mb-6 animate-pulse">
+                <p class="text-sm font-medium mb-1">📸 截圖分享到群組</p>
+                <p class="text-xs opacity-90">與同學交流你的護理心得吧！</p>
+            </div>
+
+            <button onclick="location.reload()" class="w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-gray-900 transition shadow-lg btn-active">
+                重新測試
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            { text: "洗完頭隔天不到中午，頭髮就扁塌且「一束一束」的？", type: "oil" },
+            { text: "撥弄頭髮時，頭皮會感覺悶悶的，甚至有明顯油味？", type: "oil" },
+            { text: "撥頭髮或抓頭時，會有像雪花般的「細小白色」粉末掉落？", type: "dry" },
+            { text: "頭皮經常覺得緊蹦、乾癢，像皮膚缺水一樣？", type: "dry" },
+            { text: "換季、壓力大或吹風後，頭皮容易發紅、刺痛？", type: "sensitive" },
+            { text: "即便 2 天不洗頭，髮根看起來依然乾爽不油膩？", type: "dry" },
+            { text: "頭皮上容易長出摸起來會痛的紅腫痘痘？", type: "oil" }
+        ];
+
+        let currentStep = 0;
+        let scores = { oil: 0, dry: 0, sensitive: 0 };
+
+        function startQuiz() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            if (currentStep < questions.length) {
+                document.getElementById('question-text').innerText = questions[currentStep].text;
+                document.getElementById('progress').style.width = ((currentStep / questions.length) * 100) + '%';
+                document.getElementById('step-count').innerText = `Question ${currentStep + 1}`;
+                document.getElementById('step-percent').innerText = `${currentStep + 1} / ${questions.length}`;
+            } else {
+                showResult();
+            }
+        }
+
+        function handleAnswer(isTrue) {
+            if (isTrue) {
+                scores[questions[currentStep].type]++;
+            }
+            currentStep++;
+            showQuestion();
+        }
+
+        function showResult() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+
+            let title = "";
+            let desc = "";
+            let tips = [];
+            let colorHex = "";
+            let iconSvg = "";
+
+            if (scores.sensitive >= 1) {
+                title = "敏感性頭皮";
+                colorHex = "#ef4444"; 
+                desc = "您的頭皮屏障較為脆弱，對於環境變化、化學成分或溫度的耐受力低，容易出現發紅、搔癢或刺痛感。";
+                tips = ["選用無香料、弱酸性的溫和洗髮精", "洗頭水溫維持在 36-38 度，避免過熱", "減少染燙頻率，給頭皮修復時間"];
+                iconSvg = `<svg class="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+            } else if (scores.oil >= 2) {
+                title = "油性頭皮";
+                colorHex = "#f59e0b"; 
+                desc = "皮脂腺分泌旺盛，容易讓髮根看起來油亮成束，且油垢氧化後容易產生異味，是細菌生長的溫床。";
+                tips = ["建議每天洗頭，保持毛囊清爽", "選擇清爽控油型洗髮精", "護髮產品僅抹在髮尾，避免接觸頭皮"];
+                iconSvg = `<svg class="h-10 w-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+            } else if (scores.dry >= 2) {
+                title = "乾性頭皮";
+                colorHex = "#3b82f6"; 
+                desc = "頭皮油脂分泌不足，水分流失快，容易感到緊繃並產生乾屑，髮絲通常也缺乏光澤、容易毛躁。";
+                tips = ["可嘗試隔天洗頭，避免過度清潔", "選用含有保濕成分的洗髮產品", "吹頭髮時風溫不宜過高"];
+                iconSvg = `<svg class="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>`;
+            } else {
+                title = "中性頭皮";
+                colorHex = "#10b981"; 
+                desc = "恭喜！您的頭皮油脂與水分維持在理想的平衡狀態，髮根自然蓬鬆且無異味、無明顯皮屑。";
+                tips = ["維持規律作息與均衡飲食", "選擇中性基礎清潔產品即可", "定期做頭皮去角質維持健康"];
+                iconSvg = `<svg class="h-10 w-10 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            }
+
+            const iconDiv = document.getElementById('result-icon');
+            iconDiv.style.backgroundColor = colorHex + '22';
+            iconDiv.innerHTML = iconSvg;
+
+            const titleEl = document.getElementById('result-title');
+            titleEl.innerText = title;
+            titleEl.style.color = colorHex;
+
+            document.getElementById('result-desc').innerText = desc;
+            
+            const tipsEl = document.getElementById('result-tips');
+            tipsEl.innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+
+            const now = new Date();
+            document.getElementById('result-date').innerText = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+            document.getElementById('result-id').innerText = Math.floor(Math.random() * 9000) + 1000;
+        }
+    </script>
+</body>
+</html>
