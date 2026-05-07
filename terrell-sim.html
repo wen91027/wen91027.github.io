@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特勒爾—彭若斯效應模擬器 (深度修正版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; margin: 0; overflow: hidden; background: #030712; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #f97316; cursor: pointer; margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #374151; border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+        .shape-btn.active { border-color: #f97316; background-color: rgba(249, 115, 22, 0.1); color: #fb923c; }
+    </style>
+</head>
+<body class="text-gray-200 antialiased selection:bg-orange-500 selection:text-white">
+
+    <div class="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+        
+        <!-- 左側控制面板 -->
+        <div class="w-full md:w-72 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 p-4 flex flex-col gap-4 overflow-y-auto">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
+                實驗控制台
+            </h2>
+            
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-end">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">速度 ($v/c$)</label>
+                    <span id="speedValue" class="text-orange-500 font-mono font-bold text-xs">0.80 c</span>
+                </div>
+                <input type="range" id="speedSlider" min="0" max="0.99" step="0.01" value="0.80">
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">觀測物體</label>
+                <div class="grid grid-cols-1 gap-1.5">
+                    <button id="btnCube" class="shape-btn active border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">立方體</button>
+                    <button id="btnSphere" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">球體 (極點正對)</button>
+                    <button id="btnHumanoid" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">跑動人形</button>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-1 border-t border-gray-800">
+                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">顯示圖層 (深度漸層)</label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="chkTerrell" checked class="w-3.5 h-3.5 accent-orange-500">
+                    <span class="text-xs text-gray-300">特勒爾效應</span>
+                    <div class="w-3 h-1 bg-gradient-to-r from-orange-400 to-red-800 ml-auto rounded-full"></div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="chkLorentz" class="w-3.5 h-3.5 accent-blue-500">
+                    <span class="text-xs text-gray-300">勞侖茲收縮</span>
+                    <div class="w-3 h-1 bg-gradient-to-r from-blue-400 to-blue-900 ml-auto rounded-full"></div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="chkRest" checked class="w-3.5 h-3.5 accent-gray-400">
+                    <span class="text-xs text-gray-300">靜止參考系</span>
+                    <div class="w-3 h-0.5 bg-gray-500 ml-auto border-t border-dashed border-gray-600"></div>
+                </label>
+            </div>
+
+            <div class="mt-auto pt-4 border-t border-gray-800 space-y-3">
+                <button id="btnPlay" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded-lg font-bold text-xs transition-colors flex justify-center items-center gap-2">
+                    <span id="playText">暫停</span>
+                </button>
+                <input type="range" id="timeSlider" min="-10" max="10" step="0.05" value="0">
+            </div>
+        </div>
+
+        <!-- 右側展示區 -->
+        <div class="flex-grow relative bg-black">
+            <div class="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded border border-white/5 pointer-events-none">
+                <p class="text-[9px] text-gray-500 font-mono leading-tight uppercase tracking-tighter">Depth-Corrected Rendering<br>Gradient: Near (Bright) &rarr; Far (Dark)</p>
+            </div>
+            <canvas id="simCanvas" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const timeSlider = document.getElementById('timeSlider');
+        const btnPlay = document.getElementById('btnPlay');
+        const playText = document.getElementById('playText');
+        
+        let beta = parseFloat(speedSlider.value);
+        let timeT = parseFloat(timeSlider.value);
+        let isPlaying = true;
+        let currentShape = 'cube';
+        const D = 5; 
+        let SCALE = 140; 
+        let shapeEdges = [];
+        const SUBDIVISIONS = 30;
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            SCALE = Math.min(canvas.width, canvas.height) / 5;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function generateCube() {
+            const edges = [];
+            const corners = [{x:-1,y:-1,z:-1},{x:1,y:-1,z:-1},{x:1,y:1,z:-1},{x:-1,y:1,z:-1},{x:-1,y:-1,z:1},{x:1,y:-1,z:1},{x:1,y:1,z:1},{x:-1,y:1,z:1}];
+            const lines = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+            lines.forEach(l => {
+                const edge = [];
+                for (let i=0; i<=SUBDIVISIONS; i++){
+                    const t = i/SUBDIVISIONS;
+                    edge.push({x: corners[l[0]].x + t*(corners[l[1]].x-corners[l[0]].x), y: corners[l[0]].y + t*(corners[l[1]].y-corners[l[0]].y), z: corners[l[0]].z + t*(corners[l[1]].z-corners[l[0]].z)});
+                }
+                edges.push(edge);
+            });
+            return edges;
+        }
+
+        function generateSphere() {
+            const edges = [];
+            const nL = 8, nO = 12;
+            for (let i=1; i<nL; i++){
+                const phi = Math.PI*i/nL, zV = Math.cos(phi), r = Math.sin(phi);
+                const edge = [];
+                for(let j=0; j<=SUBDIVISIONS; j++){
+                    const th = 2*Math.PI*j/SUBDIVISIONS;
+                    edge.push({x: r*Math.cos(th), y: r*Math.sin(th), z: zV});
+                }
+                edges.push(edge);
+            }
+            for (let i=0; i<nO; i++){
+                const th = 2*Math.PI*i/nO;
+                const edge = [];
+                for(let j=0; j<=SUBDIVISIONS; j++){
+                    const phi = Math.PI*j/SUBDIVISIONS;
+                    edge.push({x: Math.sin(phi)*Math.cos(th), y: Math.sin(phi)*Math.sin(th), z: Math.cos(phi)});
+                }
+                edges.push(edge);
+            }
+            return edges;
+        }
+
+        function generateHumanoid() {
+            const edges = [];
+            const addL = (p1, p2) => {
+                const edge = [];
+                for(let i=0; i<=SUBDIVISIONS; i++){
+                    const t = i/SUBDIVISIONS;
+                    edge.push({x: p1.x+t*(p2.x-p1.x), y: p1.y+t*(p2.y-p1.y), z: p1.z+t*(p2.z-p1.z)});
+                }
+                edges.push(edge);
+            };
+            const p = { pelvis:{x:0,y:-0.2,z:0}, neck:{x:0.1,y:0.4,z:0}, headTop:{x:0.15,y:0.8,z:0}, headBot:{x:0.1,y:0.45,z:0}, headFwd:{x:0.35,y:0.65,z:0}, headBwd:{x:-0.05,y:0.65,z:0}, headL:{x:0.15,y:0.65,z:-0.2}, headR:{x:0.15,y:0.65,z:0.2}, rS:{x:0.1,y:0.4,z:0.3}, lS:{x:0.1,y:0.4,z:-0.3}, rH:{x:0,y:-0.2,z:0.2}, lH:{x:0,y:-0.2,z:-0.2}, rE:{x:-0.2,y:0.3,z:0.3}, rHa:{x:-0.4,y:0.6,z:0.3}, rK:{x:0.4,y:-0.4,z:0.2}, rF:{x:0.4,y:-0.9,z:0.2}, lE:{x:0.3,y:0.2,z:-0.3}, lHa:{x:0.6,y:0.3,z:-0.3}, lK:{x:-0.4,y:-0.5,z:-0.2}, lF:{x:-0.8,y:-0.7,z:-0.2} };
+            addL(p.pelvis,p.neck); addL(p.lS,p.rS); addL(p.lH,p.rH); addL(p.neck,p.lS); addL(p.neck,p.rS); addL(p.pelvis,p.lH); addL(p.pelvis,p.rH); addL(p.headTop,p.headFwd); addL(p.headTop,p.headBwd); addL(p.headTop,p.headL); addL(p.headTop,p.headR); addL(p.headBot,p.headFwd); addL(p.headBot,p.headBwd); addL(p.headBot,p.headL); addL(p.headBot,p.headR); addL(p.headFwd,p.headL); addL(p.headFwd,p.headR); addL(p.headBwd,p.headL); addL(p.headBwd,p.headR); addL(p.rS,p.rE); addL(p.rE,p.rHa); addL(p.lS,p.lE); addL(p.lE,p.lHa); addL(p.rH,p.rK); addL(p.rK,p.rF); addL(p.lH,p.lK); addL(p.lK,p.lF);
+            return edges;
+        }
+
+        function updateGeo() {
+            if(currentShape==='cube') shapeEdges=generateCube();
+            else if(currentShape==='sphere') shapeEdges=generateSphere();
+            else if(currentShape==='humanoid') shapeEdges=generateHumanoid();
+        }
+        updateGeo();
+
+        function proj(pt, b, T, type) {
+            const b2 = b*b;
+            const omb2 = 1 - b2;
+            const g = 1/Math.sqrt(omb2);
+            let X;
+            if (type==='rest') X = pt.x+b*T;
+            else if (type==='lorentz') X = pt.x/g+b*T;
+            else if (type==='terrell') {
+                const xc = pt.x/g+b*(T+D);
+                const t2_in = xc*xc+omb2*(pt.y*pt.y+(pt.z+D)*(pt.z+D));
+                const t2 = b*Math.sqrt(Math.max(0, t2_in));
+                X = (xc-t2)/omb2;
+            }
+            const s = D/(pt.z+D);
+            return {x: X*s*SCALE, y: -pt.y*s*SCALE, z_orig: pt.z};
+        }
+
+        // 修正後的深度色彩：現在 z = -1 (近) 會得到 f = 1 (亮色)，z = 1 (遠) 會得到 f = 0 (暗色)
+        function getDepthColor(z, mode) {
+            const f = (1 - z) / 2; 
+            if (mode === 'terrell') {
+                return `rgb(${Math.round(127+f*128)}, ${Math.round(29+f*117)}, ${Math.round(29+f*31)})`;
+            } else if (mode === 'lorentz') {
+                return `rgb(${Math.round(30+f*95)}, ${Math.round(58+f*153)}, ${Math.round(138+f*114)})`;
+            }
+            return 'rgba(255,255,255,0.4)';
+        }
+
+        function drawLayer(mode) {
+            const isRest = mode === 'rest';
+            
+            shapeEdges.forEach(edge => {
+                ctx.beginPath();
+                
+                if (isRest) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.lineWidth = mode === 'terrell' ? 2.2 : 1.4;
+                    ctx.setLineDash([]);
+                    
+                    const pStart = edge[0];
+                    const pEnd = edge[edge.length-1];
+                    const sStart = proj(pStart, beta, timeT, mode);
+                    const sEnd = proj(pEnd, beta, timeT, mode);
+                    
+                    const grad = ctx.createLinearGradient(sStart.x, sStart.y, sEnd.x, sEnd.y);
+                    grad.addColorStop(0, getDepthColor(pStart.z, mode));
+                    grad.addColorStop(1, getDepthColor(pEnd.z, mode));
+                    ctx.strokeStyle = grad;
+                }
+
+                let f=true;
+                edge.forEach(p => {
+                    const s = proj(p, beta, timeT, mode);
+                    if(f){ ctx.moveTo(s.x, s.y); f=false; } else ctx.lineTo(s.x, s.y);
+                });
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+        }
+
+        function animate(now) {
+            if(isPlaying){
+                timeT += 0.04;
+                if(timeT > 8) timeT = -8;
+                timeSlider.value = timeT;
+            }
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save(); 
+            ctx.translate(canvas.width/2, canvas.height/2);
+            
+            if(document.getElementById('chkRest').checked) drawLayer('rest');
+            if(document.getElementById('chkLorentz').checked) drawLayer('lorentz');
+            if(document.getElementById('chkTerrell').checked) drawLayer('terrell');
+            
+            ctx.restore();
+            requestAnimationFrame(animate);
+        }
+
+        speedSlider.oninput = (e) => { beta=parseFloat(e.target.value); speedValue.textContent=beta.toFixed(2)+' c'; };
+        timeSlider.oninput = (e) => { timeT=parseFloat(e.target.value); if(isPlaying) toggle(); };
+        function toggle(){ isPlaying=!isPlaying; playText.textContent=isPlaying?"暫停":"播放"; }
+        btnPlay.onclick = toggle;
+        
+        function setBtn(id){ 
+            document.querySelectorAll('.shape-btn').forEach(b=>b.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+        }
+        document.getElementById('btnCube').onclick=()=>{currentShape='cube';updateGeo();setBtn('btnCube');};
+        document.getElementById('btnSphere').onclick=()=>{currentShape='sphere';updateGeo();setBtn('btnSphere');};
+        document.getElementById('btnHumanoid').onclick=()=>{currentShape='humanoid';updateGeo();setBtn('btnHumanoid');};
+        
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
