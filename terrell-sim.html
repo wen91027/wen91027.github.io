@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>特勒爾—彭若斯效應模擬器 (深度修正版)</title>
+    <title>特勒爾—彭若斯效應模擬器 (排版優化版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; margin: 0; overflow: hidden; background: #030712; }
+        body { font-family: 'Noto Sans TC', sans-serif; margin: 0; background: #030712; height: 100vh; display: flex; flex-direction: column; }
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
@@ -18,69 +18,77 @@
         }
         input[type=range]:focus { outline: none; }
         .shape-btn.active { border-color: #f97316; background-color: rgba(249, 115, 22, 0.1); color: #fb923c; }
+        
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-gray-200 antialiased selection:bg-orange-500 selection:text-white">
 
-    <div class="flex flex-col md:flex-row h-screen w-full overflow-hidden">
+    <div class="flex flex-col h-full w-full max-w-4xl mx-auto overflow-y-auto no-scrollbar">
         
-        <!-- 左側控制面板 -->
-        <div class="w-full md:w-72 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 p-4 flex flex-col gap-4 overflow-y-auto">
-            <h2 class="text-base font-bold text-white flex items-center gap-2">
-                <span class="w-2 h-2 bg-orange-500 rounded-full"></span>
-                實驗控制台
-            </h2>
-            
-            <div class="space-y-1.5">
-                <div class="flex justify-between items-end">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">速度 ($v/c$)</label>
-                    <span id="speedValue" class="text-orange-500 font-mono font-bold text-xs">0.80 c</span>
-                </div>
-                <input type="range" id="speedSlider" min="0" max="0.99" step="0.01" value="0.80">
-            </div>
-
-            <div class="space-y-1.5">
-                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">觀測物體</label>
-                <div class="grid grid-cols-1 gap-1.5">
-                    <button id="btnCube" class="shape-btn active border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">立方體</button>
-                    <button id="btnSphere" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">球體 (極點正對)</button>
-                    <button id="btnHumanoid" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-1.5 text-xs font-medium transition-all">跑動人形</button>
-                </div>
-            </div>
-
-            <div class="space-y-2 pt-1 border-t border-gray-800">
-                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">顯示圖層 (深度漸層)</label>
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="chkTerrell" checked class="w-3.5 h-3.5 accent-orange-500">
-                    <span class="text-xs text-gray-300">特勒爾效應</span>
-                    <div class="w-3 h-1 bg-gradient-to-r from-orange-400 to-red-800 ml-auto rounded-full"></div>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="chkLorentz" class="w-3.5 h-3.5 accent-blue-500">
-                    <span class="text-xs text-gray-300">勞侖茲收縮</span>
-                    <div class="w-3 h-1 bg-gradient-to-r from-blue-400 to-blue-900 ml-auto rounded-full"></div>
-                </label>
-                <label class="flex items-center gap-3 cursor-pointer group">
-                    <input type="checkbox" id="chkRest" checked class="w-3.5 h-3.5 accent-gray-400">
-                    <span class="text-xs text-gray-300">靜止參考系</span>
-                    <div class="w-3 h-0.5 bg-gray-500 ml-auto border-t border-dashed border-gray-600"></div>
-                </label>
-            </div>
-
-            <div class="mt-auto pt-4 border-t border-gray-800 space-y-3">
-                <button id="btnPlay" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded-lg font-bold text-xs transition-colors flex justify-center items-center gap-2">
-                    <span id="playText">暫停</span>
-                </button>
-                <input type="range" id="timeSlider" min="-10" max="10" step="0.05" value="0">
+        <!-- 1. 觀測物體 -->
+        <div class="p-4 bg-gray-900/50 border-b border-gray-800">
+            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest block mb-2">1. 選擇觀測物體</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="btnCube" class="shape-btn active border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-2 text-xs font-medium transition-all">立方體</button>
+                <button id="btnSphere" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-2 text-xs font-medium transition-all">球體</button>
+                <button id="btnHumanoid" class="shape-btn border border-gray-700 bg-gray-800 text-gray-400 rounded-lg py-2 text-xs font-medium transition-all">跑動人形</button>
             </div>
         </div>
 
-        <!-- 右側展示區 -->
-        <div class="flex-grow relative bg-black">
-            <div class="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded border border-white/5 pointer-events-none">
-                <p class="text-[9px] text-gray-500 font-mono leading-tight uppercase tracking-tighter">Depth-Corrected Rendering<br>Gradient: Near (Bright) &rarr; Far (Dark)</p>
+        <!-- 2. 模擬展示 (核心畫布) -->
+        <div class="relative bg-black flex-grow min-h-[300px] md:min-h-[400px] border-b border-gray-800">
+            <div class="absolute top-3 left-3 z-10 bg-black/40 backdrop-blur-sm px-2 py-1 rounded border border-white/5 pointer-events-none">
+                <p class="text-[8px] text-gray-500 font-mono leading-tight uppercase tracking-tighter">2. 模擬展示區域<br>Near (Bright) &rarr; Far (Dark)</p>
             </div>
             <canvas id="simCanvas" class="w-full h-full"></canvas>
+        </div>
+
+        <!-- 下方控制區 -->
+        <div class="p-4 bg-gray-900 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- 3. 移動速度 -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-end">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">3. 移動速度 ($v/c$)</label>
+                    <span id="speedValue" class="text-orange-500 font-mono font-bold text-sm">0.80 c</span>
+                </div>
+                <input type="range" id="speedSlider" min="0" max="0.99" step="0.01" value="0.80">
+                
+                <!-- 播放與時間軸 -->
+                <div class="pt-2 flex items-center gap-4">
+                    <button id="btnPlay" class="flex-shrink-0 bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold text-xs transition-colors">
+                        <span id="playText">暫停</span>
+                    </button>
+                    <div class="flex-grow">
+                        <input type="range" id="timeSlider" min="-10" max="10" step="0.05" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 顯示圖層 -->
+            <div class="space-y-2.5">
+                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">4. 顯示圖層控制</label>
+                <div class="grid grid-cols-1 gap-2">
+                    <label class="flex items-center gap-3 cursor-pointer bg-gray-800/50 p-2 rounded-md hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" id="chkTerrell" checked class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-gray-300">特勒爾效應 (實際所見)</span>
+                        <div class="w-4 h-1 bg-gradient-to-r from-orange-400 to-red-800 ml-auto rounded-full"></div>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer bg-gray-800/50 p-2 rounded-md hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" id="chkLorentz" class="w-4 h-4 accent-blue-500">
+                        <span class="text-xs text-gray-300">僅勞侖茲收縮 (物理測量)</span>
+                        <div class="w-4 h-1 bg-gradient-to-r from-blue-400 to-blue-900 ml-auto rounded-full"></div>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer bg-gray-800/50 p-2 rounded-md hover:bg-gray-800 transition-colors">
+                        <input type="checkbox" id="chkRest" checked class="w-4 h-4 accent-gray-400">
+                        <span class="text-xs text-gray-300">靜止參考系 (原始形狀)</span>
+                        <div class="w-4 h-0.5 bg-gray-500 ml-auto border-t border-dashed border-gray-600"></div>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -105,7 +113,8 @@
         function resizeCanvas() {
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
-            SCALE = Math.min(canvas.width, canvas.height) / 5;
+            // 動態調整縮放比例以適應畫布大小
+            SCALE = Math.min(canvas.width, canvas.height) / 4.5;
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
@@ -185,10 +194,9 @@
                 X = (xc-t2)/omb2;
             }
             const s = D/(pt.z+D);
-            return {x: X*s*SCALE, y: -pt.y*s*SCALE, z_orig: pt.z};
+            return {x: X*s*SCALE, y: -pt.y*s*SCALE};
         }
 
-        // 修正後的深度色彩：現在 z = -1 (近) 會得到 f = 1 (亮色)，z = 1 (遠) 會得到 f = 0 (暗色)
         function getDepthColor(z, mode) {
             const f = (1 - z) / 2; 
             if (mode === 'terrell') {
@@ -201,29 +209,22 @@
 
         function drawLayer(mode) {
             const isRest = mode === 'rest';
-            
             shapeEdges.forEach(edge => {
                 ctx.beginPath();
-                
                 if (isRest) {
-                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([5, 5]);
                 } else {
-                    ctx.lineWidth = mode === 'terrell' ? 2.2 : 1.4;
+                    ctx.lineWidth = mode === 'terrell' ? 2.5 : 1.5;
                     ctx.setLineDash([]);
-                    
-                    const pStart = edge[0];
-                    const pEnd = edge[edge.length-1];
-                    const sStart = proj(pStart, beta, timeT, mode);
-                    const sEnd = proj(pEnd, beta, timeT, mode);
-                    
+                    const pStart = edge[0], pEnd = edge[edge.length-1];
+                    const sStart = proj(pStart, beta, timeT, mode), sEnd = proj(pEnd, beta, timeT, mode);
                     const grad = ctx.createLinearGradient(sStart.x, sStart.y, sEnd.x, sEnd.y);
                     grad.addColorStop(0, getDepthColor(pStart.z, mode));
                     grad.addColorStop(1, getDepthColor(pEnd.z, mode));
                     ctx.strokeStyle = grad;
                 }
-
                 let f=true;
                 edge.forEach(p => {
                     const s = proj(p, beta, timeT, mode);
@@ -234,23 +235,19 @@
             ctx.setLineDash([]);
         }
 
-        function animate(now) {
+        function animate() {
             if(isPlaying){
                 timeT += 0.04;
                 if(timeT > 8) timeT = -8;
                 timeSlider.value = timeT;
             }
-            
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             ctx.save(); 
             ctx.translate(canvas.width/2, canvas.height/2);
-            
             if(document.getElementById('chkRest').checked) drawLayer('rest');
             if(document.getElementById('chkLorentz').checked) drawLayer('lorentz');
             if(document.getElementById('chkTerrell').checked) drawLayer('terrell');
-            
             ctx.restore();
             requestAnimationFrame(animate);
         }
@@ -259,11 +256,7 @@
         timeSlider.oninput = (e) => { timeT=parseFloat(e.target.value); if(isPlaying) toggle(); };
         function toggle(){ isPlaying=!isPlaying; playText.textContent=isPlaying?"暫停":"播放"; }
         btnPlay.onclick = toggle;
-        
-        function setBtn(id){ 
-            document.querySelectorAll('.shape-btn').forEach(b=>b.classList.remove('active')); 
-            document.getElementById(id).classList.add('active'); 
-        }
+        function setBtn(id){ document.querySelectorAll('.shape-btn').forEach(b=>b.classList.remove('active')); document.getElementById(id).classList.add('active'); }
         document.getElementById('btnCube').onclick=()=>{currentShape='cube';updateGeo();setBtn('btnCube');};
         document.getElementById('btnSphere').onclick=()=>{currentShape='sphere';updateGeo();setBtn('btnSphere');};
         document.getElementById('btnHumanoid').onclick=()=>{currentShape='humanoid';updateGeo();setBtn('btnHumanoid');};
